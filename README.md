@@ -39,11 +39,20 @@ legado-server/
 
 ## 部署（Docker Compose）
 
-> 编辑 `compose.yaml`，把 `<SOURCE_DIR>` / `<DATA_DIR>` / `<BOOKS_DIR>` 替换为你主机的真实路径。
+镜像已发布到 GitHub Container Registry（**公开**，无需登录即可拉取）：
+
+```
+ghcr.io/yedexuqu/legado-server:latest
+```
+
+> 编辑 `compose.yaml`，把卷路径替换为你主机的真实路径：
+> - `<HOST_SOURCE_DIR>`：本仓库克隆/解包后的目录（含 `app/`、`requirements.txt`、`Dockerfile`）
+> - `<HOST_DATA_DIR>` ：运行数据持久化目录（SQLite、上传文件等）
+> - `<HOST_BOOKS_DIR>`：书籍文件目录（txt / 有声书 mp3 等），只读挂载到 `/books`
 
 ```bash
-# 1) 拉取镜像（或本地 build: docker build -t legado-server .）
-docker pull ghcr.io/<owner>/legado-server:latest
+# 1) 拉取公开镜像（无需登录）
+docker pull ghcr.io/yedexuqu/legado-server:latest
 
 # 2) 启动
 docker compose up -d
@@ -51,11 +60,12 @@ docker compose up -d
 # 3) 访问 Web： http://<host-ip>:8086
 ```
 
-### 本地构建镜像
+### 本地重新构建并推送镜像
 
 ```bash
-docker build -t ghcr.io/<owner>/legado-server:latest .
-docker push ghcr.io/<owner>/legado-server:latest
+docker build -t ghcr.io/yedexuqu/legado-server:latest .
+# 推送到 GHCR（需登录：echo "$GITHUB_TOKEN" | docker login ghcr.io -u yedexuqu --password-stdin）
+docker push ghcr.io/yedexuqu/legado-server:latest
 ```
 
 ## 配置
@@ -65,5 +75,5 @@ docker push ghcr.io/<owner>/legado-server:latest
 - `ai_api_key`：AI 纠错用的 API 密钥（可选，留空则不启用 AI 纠错）
 - 扫描目录、采集间隔等
 
-> 注意：本仓库示例中的 `<owner>`、`<host-ip>`、卷路径均为占位符，请替换为你自己的环境值。
+> 注意：`<host-ip>` 与卷路径为占位符，请替换为你自己的环境值；镜像地址 `ghcr.io/yedexuqu/legado-server:latest` 为公开真实路径，无需替换。
 > 任何私有网络地址、密钥、个人路径均**不入库**。

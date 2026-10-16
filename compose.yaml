@@ -3,22 +3,22 @@
 # 说明：
 # - 镜像使用 GitHub Container Registry（ghcr.io）构建产物，由 CI / 本地 build 推送。
 # - 卷路径请替换为你的 NAS / 主机实际路径（下方为占位示例）。
-#   * <SOURCE_DIR>  ：本仓库源码克隆/解包后的目录（含 app/、requirements.txt、Dockerfile）
-#   * <DATA_DIR>    ：运行数据持久化目录（SQLite、上传文件等）
-#   * <BOOKS_DIR>   ：书籍文件目录（txt / 有声书 mp3 等），只读挂载到 /books
+#   * <HOST_SOURCE_DIR>  ：本仓库源码克隆/解包后的目录（含 app/、requirements.txt、Dockerfile）
+#   * <HOST_DATA_DIR>    ：运行数据持久化目录（SQLite、上传文件等）
+#   * <HOST_BOOKS_DIR>   ：书籍文件目录（txt / 有声书 mp3 等），只读挂载到 /books
 # - 端口 8086 为服务端口，按需映射到宿主机。
 
 services:
   legado-server:
-    # 本地构建后推送的镜像；也可改为本地 build: .
-    image: ghcr.io/<owner>/legado-server:latest
+    # 公开镜像（GHCR，无需登录即可拉取）
+    image: ghcr.io/yedexuqu/legado-server:latest
     container_name: legado-server
     restart: unless-stopped
     working_dir: /app
     volumes:
-      - <SOURCE_DIR>:/app
-      - <DATA_DIR>:/app/data
-      - <BOOKS_DIR>:/books:ro
+      - <HOST_SOURCE_DIR>:/app
+      - <HOST_DATA_DIR>:/app/data
+      - <HOST_BOOKS_DIR>:/books:ro
     ports:
       - "8086:8086"
     environment:
