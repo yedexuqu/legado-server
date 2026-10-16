@@ -28,16 +28,16 @@ async def _ensure_admin_credentials():
     db = await get_db()
     
     # Check if admin_user exists
-    admin_user = await db.get_config("admin_user")
+    admin_user = await db.config.get("admin_user")
     if not admin_user:
-        await db.set_config("admin_user", DEFAULT_ADMIN_USER, "管理员用户名", "auth")
-        await db.set_config("admin_pass_hash", hash_password(DEFAULT_ADMIN_PASS), "管理员密码哈希", "auth")
+        await db.config.set("admin_user", DEFAULT_ADMIN_USER, "管理员用户名", "auth")
+        await db.config.set("admin_pass_hash", hash_password(DEFAULT_ADMIN_PASS), "管理员密码哈希", "auth")
         return DEFAULT_ADMIN_USER, DEFAULT_ADMIN_PASS
     
-    admin_pass_hash = await db.get_config("admin_pass_hash")
+    admin_pass_hash = await db.config.get("admin_pass_hash")
     if not admin_pass_hash:
         # Reset if hash is missing
-        await db.set_config("admin_pass_hash", hash_password(DEFAULT_ADMIN_PASS), "管理员密码哈希", "auth")
+        await db.config.set("admin_pass_hash", hash_password(DEFAULT_ADMIN_PASS), "管理员密码哈希", "auth")
         return admin_user, DEFAULT_ADMIN_PASS
     
     return admin_user, None
@@ -68,7 +68,7 @@ async def login_submit(
     """Handle login form submission."""
     admin_user, _ = await _ensure_admin_credentials()
     db = await get_db()
-    admin_pass_hash = await db.get_config("admin_pass_hash")
+    admin_pass_hash = await db.config.get("admin_pass_hash")
     
     if username != admin_user or not verify_password(password, admin_pass_hash):
         templates = get_templates()
@@ -115,13 +115,13 @@ async def change_password(request: Request, req: ChangePasswordRequest):
     user = await require_admin(request)
     
     db = await get_db()
-    admin_user = await db.get_config("admin_user")
-    admin_pass_hash = await db.get_config("admin_pass_hash")
+    admin_user = await db.config.get("admin_user")
+    admin_pass_hash = await db.config.get("admin_pass_hash")
     
     if not verify_password(req.old_password, admin_pass_hash):
         raise HTTPException(status_code=400, detail="原密码错误")
     
     new_hash = hash_password(req.new_password)
-    await db.set_config("admin_pass_hash", new_hash, "管理员密码哈希", "auth")
+    await db.config.set("admin_pass_hash", new_hash, "管理员密码哈希", "auth")
     
     return {"success": True, "message": "密码已更新"}

@@ -31,7 +31,7 @@ async def get_tags():
     """Get all tags with usage counts."""
     try:
         database = await get_db()
-        tags = await database.get_popular_tags(limit=100)
+        tags = await database.tags.get_popular(limit=100)
         return {"success": True, "data": tags}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取标签列表失败: {str(e)}")
@@ -42,7 +42,7 @@ async def get_popular_tags(limit: int = Query(20, ge=1, le=100)):
     """Get popular tags (consumed by the book detail tag editor)."""
     try:
         database = await get_db()
-        rows = await database.get_popular_tags(limit=limit)
+        rows = await database.tags.get_popular(limit=limit)
         data = [{"name": (r.get("tag") or r.get("name")), "count": r.get("count", 0)} for r in rows]
         return {"success": True, "data": data}
     except Exception as e:
@@ -74,7 +74,7 @@ async def delete_tag(tag: str):
     """Delete a tag from all books and the tags table."""
     try:
         database = await get_db()
-        count = await database.delete_tag(tag)
+        count = await database.tags.delete(tag)
         await database.db.execute("DELETE FROM tags WHERE name = ?", (tag,))
         await database.db.commit()
         return {"success": True, "message": f"已从 {count} 本书中移除标签"}
@@ -91,7 +91,7 @@ async def rename_tag(config: TagRename):
         raise HTTPException(status_code=400, detail="old 和 new 参数不能为空")
     try:
         database = await get_db()
-        count = await database.rename_tag(old_tag, new_tag)
+        count = await database.tags.rename(old_tag, new_tag)
         return {"success": True, "message": f"已重命名 {count} 条标签记录"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"重命名标签失败: {str(e)}")
@@ -108,7 +108,7 @@ async def merge_tags(config: TagMerge):
         raise HTTPException(status_code=400, detail="源标签和目标标签不能相同")
     try:
         database = await get_db()
-        count = await database.merge_tags(source, target)
+        count = await database.tags.merge(source, target)
         return {"success": True, "message": f"已合并 {count} 条标签记录"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"合并标签失败: {str(e)}")
@@ -123,8 +123,8 @@ async def get_books_by_tag(
     """Get books filtered by tag."""
     try:
         database = await get_db()
-        books = await database.get_books_by_tag(tag, page=page, per_page=per_page)
-        total = await database.get_book_tag_count(tag)
+        books = await database.tags.get_books_by_tag(tag, page=page, per_page=per_page)
+        total = await database.tags.get_book_tag_count(tag)
         return {"success": True, "data": books, "total": total}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取标签书籍失败: {str(e)}")

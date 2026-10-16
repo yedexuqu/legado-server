@@ -44,18 +44,18 @@ class TxtScanner:
         if self._regex_config_cache is not None:
             return self._regex_config_cache
         try:
-            chapter_patterns = await self.db.get_config("chapter_patterns", DEFAULT_CHAPTER_PATTERNS)
+            chapter_patterns = await self.db.config.get("chapter_patterns", DEFAULT_CHAPTER_PATTERNS)
             if isinstance(chapter_patterns, str):
                 chapter_patterns = json.loads(chapter_patterns)
-            min_score_raw = await self.db.get_config("min_chapter_score", "2")
+            min_score_raw = await self.db.config.get("min_chapter_score", "2")
             try:
                 min_score = int(min_score_raw)
             except (TypeError, ValueError):
                 min_score = 2
-            book_name_patterns = await self.db.get_config("regex_book_name_patterns", DEFAULT_BOOK_NAME_PATTERNS)
+            book_name_patterns = await self.db.config.get("regex_book_name_patterns", DEFAULT_BOOK_NAME_PATTERNS)
             if isinstance(book_name_patterns, str):
                 book_name_patterns = json.loads(book_name_patterns)
-            author_patterns = await self.db.get_config("regex_author_patterns", DEFAULT_AUTHOR_PATTERNS)
+            author_patterns = await self.db.config.get("regex_author_patterns", DEFAULT_AUTHOR_PATTERNS)
             if isinstance(author_patterns, str):
                 author_patterns = json.loads(author_patterns)
             self._regex_config_cache = {
@@ -75,7 +75,7 @@ class TxtScanner:
 
     async def _get_ai_config(self) -> Dict:
         try:
-            features = await self.db.get_config("ai_enabled_features", [])
+            features = await self.db.config.get("ai_enabled_features", [])
             if isinstance(features, str):
                 features = json.loads(features)
             return {
@@ -110,13 +110,13 @@ class TxtScanner:
                 groups[base].sort(key=lambda x: x[0])
             for base_name, file_list in groups.items():
                 file_paths = [os.path.join(root, f) for _, f in file_list]
-                if await self.db.book_exists(file_paths[0]):
+                if await self.db.books.exists(file_paths[0]):
                     continue
                 # Dedup: skip if same filename+size already exists (different path)
                 basename = os.path.basename(file_paths[0])
                 fsize = os.path.getsize(file_paths[0])
                 fp = f"{basename}|{fsize}"
-                if await self.db.fingerprint_exists(fp):
+                if await self.db.books.exists_by_fingerprint(fp):
                     print(f"Skipping duplicate: {basename} (same name+size exists)")
                     continue
                 if len(file_paths) == 1:
@@ -496,7 +496,7 @@ class TxtScanner:
             return
         # Respect user's AI feature toggles — skip if nothing enabled
         try:
-            features = await self.db.get_config("ai_enabled_features", [])
+            features = await self.db.config.get("ai_enabled_features", [])
             if isinstance(features, str):
                 import json
                 features = json.loads(features)
@@ -513,14 +513,14 @@ class TxtScanner:
                 # Category
                 cat = result.get("category", "").strip()
                 if cat:
-                    await self.db.update_book_category(book_id, cat)
+                    await self.db.categories.update_book(book_id, cat)
                 # Tags
                 tags = result.get("tags", [])
                 if isinstance(tags, list):
                     for tag in tags:
                         tag = str(tag).strip()
                         if tag:
-                            await self.db.add_book_tag(book_id, tag)
+                            await self.db.tags.add(book_id, tag)
         except Exception:
             # Fallback: individual calls
             try:
@@ -529,7 +529,7 @@ class TxtScanner:
                 if cat_result and not cat_result.get("error"):
                     cat = cat_result.get("category", "").strip()
                     if cat:
-                        await self.db.update_book_category(book_id, cat)
+                        await self.db.categories.update_book(book_id, cat)
             except Exception:
                 pass
             try:
@@ -541,7 +541,7 @@ class TxtScanner:
                         for tag in tags:
                             tag = str(tag).strip()
                             if tag:
-                                await self.db.add_book_tag(book_id, tag)
+                                await self.db.tags.add(book_id, tag)
             except Exception:
                 pass
 

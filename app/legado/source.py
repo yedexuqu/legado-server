@@ -13,7 +13,7 @@ router = APIRouter()
 async def get_book_source_url(request: Request) -> str:
     """Get book source URL, using configured URL if available."""
     db = await get_db()
-    configured_url = await db.get_config("book_source_url", "")
+    configured_url = await db.config.get("book_source_url", "")
     if configured_url:
         return configured_url.rstrip("/")
 
@@ -197,16 +197,16 @@ async def discover(
     templates = get_templates()
     offset = (page - 1) * per_page
 
-    books = await db.get_books(page=page, per_page=per_page)
+    books = await db.books.get_all(page=page, per_page=per_page)
 
     if is_legado_client(request):
         return templates.TemplateResponse(request, "discover_legado.html",
                                           {"request": request, "books": books, "base_url": await get_book_source_url(request)})
 
     # Browser: index.html needs the full context, otherwise rendering breaks (500).
-    categories = await db.get_categories()
-    tags = await db.get_popular_tags(limit=30)
-    total = await db.get_book_count()
+    categories = await db.categories.get_all()
+    tags = await db.tags.get_popular(limit=30)
+    total = await db.books.count()
     return templates.TemplateResponse(request, "index.html", {
         "request": request,
         "books": books,

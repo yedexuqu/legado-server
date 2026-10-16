@@ -27,7 +27,7 @@ async def get_all_config():
     """Get all configuration values."""
     try:
         database = await get_db()
-        config = await database.get_all_config()
+        config = await database.config.get_all()
         return {"success": True, "data": config}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取配置失败: {str(e)}")
@@ -53,7 +53,7 @@ async def get_config_value(key: str):
     """Get a single config value by key. Masks sensitive values."""
     try:
         database = await get_db()
-        value = await database.get_config(key)
+        value = await database.config.get(key)
         if value is None:
             raise HTTPException(status_code=404, detail="配置项不存在")
         # Mask AI API key for security
@@ -71,7 +71,7 @@ async def update_config(config: ConfigUpdate):
     """Update a single configuration value."""
     try:
         database = await get_db()
-        success = await database.set_config(config.key, config.value, config.description, config.category)
+        success = await database.config.set(config.key, config.value, config.description, config.category)
         if success:
             return {"success": True, "message": f"配置 '{config.key}' 已更新"}
         else:
@@ -90,7 +90,7 @@ async def bulk_update_config(bulk: BulkConfigUpdate):
         results = []
         for c in bulk.configs:
             try:
-                success = await database.set_config(c.key, c.value, c.description, c.category)
+                success = await database.config.set(c.key, c.value, c.description, c.category)
                 results.append({"key": c.key, "success": success})
             except Exception as e:
                 results.append({"key": c.key, "success": False, "error": str(e)})
@@ -132,7 +132,7 @@ async def get_stats():
     """Get system statistics (book count, chapters, total size)."""
     try:
         database = await get_db()
-        book_count = await database.get_book_count()
+        book_count = await database.books.count()
 
         async with database.get_connection() as conn:
             cursor = await conn.execute("SELECT type, COUNT(*) as count FROM books GROUP BY type")
@@ -169,7 +169,7 @@ async def delete_dir_with_books(config: ConfigUpdate):
         if len(dir_path) < 2 or dir_path == "/":
             raise HTTPException(status_code=400, detail="目录路径非法，拒绝删除")
 
-        book_dirs = await database.get_config("book_dirs", [])
+        book_dirs = await database.config.get("book_dirs", [])
         if not isinstance(book_dirs, list):
             book_dirs = []
         registered = [(d.get("path") if isinstance(d, dict) else str(d)) for d in book_dirs]
@@ -181,8 +181,8 @@ async def delete_dir_with_books(config: ConfigUpdate):
         # Delete books first: if deletion fails, the directory stays configured and the
         # next scan re-imports it (self-healing). The reverse order would leave books
         # in the library that no longer have any configured source directory.
-        count = await database.delete_books_by_dir(dir_path)
-        await database.set_config("book_dirs", book_dirs, description="书籍目录（JSON数组）", category="general")
+        count = await database.books.delete_by_dir(dir_path)
+        await database.config.set("book_dirs", book_dirs, description="书籍目录（JSON数组）", category="general")
         return {"success": True, "message": f"已从 {dir_path} 删除 {count} 本书籍"}
     except HTTPException:
         raise

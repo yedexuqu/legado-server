@@ -25,7 +25,7 @@ async def get_categories():
     """Get all categories with book counts."""
     try:
         database = await get_db()
-        categories = await database.get_categories()
+        categories = await database.categories.get_all()
         return {"success": True, "data": categories}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取分类列表失败: {str(e)}")
@@ -61,7 +61,7 @@ async def rename_category(config: CategoryRename):
     try:
         database = await get_db()
         # Update books
-        count = await database.batch_update_category(old_name, new_name)
+        count = await database.categories.batch_update(old_name, new_name)
         # Update categories table
         await database.db.execute(
             "UPDATE categories SET name = ? WHERE name = ?", (new_name, old_name)
@@ -77,7 +77,7 @@ async def delete_category(category: str):
     """Delete a category, moving its books to '默认'."""
     try:
         database = await get_db()
-        count = await database.batch_update_category(category, "默认")
+        count = await database.categories.batch_update(category, "默认")
         await database.db.execute(
             "DELETE FROM categories WHERE name = ?", (category,)
         )
@@ -96,8 +96,8 @@ async def get_books_by_category(
     """Get books filtered by category."""
     try:
         database = await get_db()
-        books = await database.get_books_by_category(category, page=page, per_page=per_page)
-        total = await database.get_book_count_by_category(category)
+        books = await database.categories.get_books(category, page=page, per_page=per_page)
+        total = await database.categories.get_count(category)
         return {"success": True, "data": books, "total": total}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取分类书籍失败: {str(e)}")

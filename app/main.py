@@ -29,11 +29,11 @@ async def background_scanner():
     while True:
         try:
             db = await get_db()
-            auto_scan = await db.get_config("auto_scan", "true")
+            auto_scan = await db.config.get("auto_scan", "true")
             should_scan = auto_scan if isinstance(auto_scan, bool) else str(auto_scan).lower() == "true"
 
             if should_scan:
-                book_dirs = await db.get_config("book_dirs", ["/books"])
+                book_dirs = await db.config.get("book_dirs", ["/books"])
                 if book_dirs:
                     scanner = get_scanner_service()
                     await scanner.scan_all()

@@ -38,7 +38,7 @@ async def index(
         page_size = per_page
     else:
         try:
-            page_size = int(await db.get_config("page_size", str(DEFAULT_PAGE_SIZE)))
+            page_size = int(await db.config.get("page_size", str(DEFAULT_PAGE_SIZE)))
             if page_size not in VALID_PAGE_SIZES:
                 page_size = DEFAULT_PAGE_SIZE
         except (ValueError, TypeError):
@@ -46,17 +46,17 @@ async def index(
 
     # Fetch books based on filter
     if category:
-        books = await db.get_books_by_category(category, page=page, per_page=page_size)
-        total = await db.get_book_count_by_category(category)
+        books = await db.categories.get_books(category, page=page, per_page=page_size)
+        total = await db.categories.get_count(category)
     elif tag:
-        books = await db.get_books_by_tag(tag, page=page, per_page=page_size)
-        total = await db.get_book_tag_count(tag)
+        books = await db.tags.get_books_by_tag(tag, page=page, per_page=page_size)
+        total = await db.tags.get_book_tag_count(tag)
     else:
-        books = await db.get_books(page=page, per_page=page_size)
-        total = await db.get_book_count()
+        books = await db.books.get_all(page=page, per_page=page_size)
+        total = await db.books.count()
 
-    categories = await db.get_categories()
-    tags = await db.get_popular_tags(limit=30)
+    categories = await db.categories.get_all()
+    tags = await db.tags.get_popular(limit=30)
 
     valid_views = {"grid", "list", "category", "detail", "timeline", "bigicon"}
     view_mode = view if view in valid_views else "grid"
@@ -85,14 +85,14 @@ async def search(
     db = await get_db()
     templates = get_templates()
     try:
-        page_size = int(await db.get_config("page_size", str(DEFAULT_PAGE_SIZE)))
+        page_size = int(await db.config.get("page_size", str(DEFAULT_PAGE_SIZE)))
         if page_size not in VALID_PAGE_SIZES:
             page_size = DEFAULT_PAGE_SIZE
     except (ValueError, TypeError):
         page_size = DEFAULT_PAGE_SIZE
 
-    results = await db.search_books(key, page=page, per_page=page_size)
-    total = await db.search_count(key)
+    results = await db.books.search(key, page=page, per_page=page_size)
+    total = await db.books.search_count(key)
 
     template = "search_legado.html" if is_legado_client(request) else "search.html"
     return templates.TemplateResponse(request, template, {
@@ -114,12 +114,12 @@ async def book_detail(request: Request, book_id: int):
         raise HTTPException(status_code=400, detail="无效的书籍 ID")
     db = await get_db()
     templates = get_templates()
-    book = await db.get_book(book_id)
+    book = await db.books.get(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
-    chapters = await db.get_chapters(book_id)
-    book_tags = await db.get_book_tags(book_id)
+    chapters = await db.chapters.get_all(book_id)
+    book_tags = await db.tags.get_by_book(book_id)
     template = "book_legado.html" if is_legado_client(request) else "book.html"
 
     return templates.TemplateResponse(request, template, {
@@ -138,15 +138,15 @@ async def chapter(request: Request, book_id: int, chapter_num: int):
         raise HTTPException(status_code=400, detail="无效的参数")
     db = await get_db()
     templates = get_templates()
-    book = await db.get_book(book_id)
+    book = await db.books.get(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
-    ch = await db.get_chapter(book_id, chapter_num)
+    ch = await db.chapters.get(book_id, chapter_num)
     if not ch:
         raise HTTPException(status_code=404, detail="章节不存在")
 
-    content = await db.get_chapter_content(ch["id"])
+    content = await db.chapters.get_content(ch["id"])
     template = "chapter_legado.html" if is_legado_client(request) else "chapter.html"
 
     return templates.TemplateResponse(request, template, {
@@ -199,13 +199,13 @@ async def cover(book_id: int):
     book = None
     if book_id >= 1:
         try:
-            book = await db.get_book(book_id)
+            book = await db.books.get(book_id)
         except Exception as exc:  # never let a lookup error break the <img>
             logger.warning(f"cover: 查询书籍 {book_id} 失败: {exc}")
 
     cover_path = (book or {}).get("cover_path")
     if cover_path:
-        raw_dirs = await db.get_config("book_dirs", ["/books"]) or []
+        raw_dirs = await db.config.get("book_dirs", ["/books"]) or []
         # book_dirs may hold plain strings or {"path": ..., "category": ...} dicts
         allowed_dirs = []
         for entry in raw_dirs:
@@ -240,7 +240,7 @@ async def settings_page(request: Request):
     
     db = await get_db()
     templates = get_templates()
-    config = await db.get_all_config()
+    config = await db.config.get_all()
 
     return templates.TemplateResponse(request, "settings.html", {
         "request": request,

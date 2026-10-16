@@ -40,7 +40,7 @@ class Mp3Scanner:
                 })
         
         # Check if already exists
-        if await self.db.book_exists(dir_path):
+        if await self.db.books.exists(dir_path):
             return
         
         # Add book
@@ -56,7 +56,7 @@ class Mp3Scanner:
             "cover_path": book_info.get("cover_path")
         }
         
-        book_id = await self.db.add_book(book_data)
+        book_id = await self.db.books.add(book_data)
         if not book_id:
             return
         
@@ -69,7 +69,7 @@ class Mp3Scanner:
                 "audio_file": chapter["audio_file"],
                 "duration": chapter["duration"]
             }
-            await self.db.add_chapter(chapter_data)
+            await self.db.chapters.add(chapter_data)
         
         print(f"Scanned audio: {book_info['title']} ({len(chapters)} chapters)")
     

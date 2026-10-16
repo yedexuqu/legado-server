@@ -19,9 +19,9 @@ class AICorrector:
 
     async def load_from_db(self, db):
         try:
-            api_base = await db.get_config("ai_api_base", "")
-            api_key = await db.get_config("ai_api_key", "")
-            model = await db.get_config("ai_model", "")
+            api_base = await db.config.get("ai_api_base", "")
+            api_key = await db.config.get("ai_api_key", "")
+            model = await db.config.get("ai_model", "")
             if api_base: self.api_base = api_base
             if api_key: self.api_key = api_key
             if model: self.model = model

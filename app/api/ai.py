@@ -53,8 +53,8 @@ async def test_ai_connection():
         import httpx
 
         database = await get_db()
-        api_base = await database.get_config("ai_api_base", "https://api.openai.com/v1")
-        api_key = await database.get_config("ai_api_key", "")
+        api_base = await database.config.get("ai_api_base", "https://api.openai.com/v1")
+        api_key = await database.config.get("ai_api_key", "")
 
         if not api_key:
             return {"success": False, "message": "API Key 未配置"}

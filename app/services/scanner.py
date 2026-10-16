@@ -32,7 +32,7 @@ class ScannerService:
         scanned = 0
         totals = {"books_written": 0, "chapters_written": 0, "commits": 0}
         try:
-            book_dirs = await self._db.get_config("book_dirs", ["/books"])
+            book_dirs = await self._db.config.get("book_dirs", ["/books"])
             for item in book_dirs:
                 if isinstance(item, dict):
                     dir_path = item.get("path", "")

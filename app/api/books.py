@@ -32,11 +32,11 @@ async def api_search_books(
     database = await get_db()
     try:
         if search:
-            results = await database.search_books(search, page=page, per_page=per_page)
-            total = await database.search_count(search)
+            results = await database.books.search(search, page=page, per_page=per_page)
+            total = await database.books.search_count(search)
         else:
-            results = await database.get_books(page=page, per_page=per_page)
-            total = await database.get_book_count()
+            results = await database.books.get_all(page=page, per_page=per_page)
+            total = await database.books.count()
         return {"success": True, "data": results, "total": total, "page": page, "per_page": per_page}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取书籍列表失败: {str(e)}")
@@ -53,10 +53,10 @@ async def api_get_book(book_id: int):
         raise HTTPException(status_code=400, detail="无效的书籍 ID")
     database = await get_db()
     try:
-        book = await database.get_book(book_id)
+        book = await database.books.get(book_id)
         if not book:
             raise HTTPException(status_code=404, detail="书籍不存在")
-        chapters = await database.get_chapters(book_id)
+        chapters = await database.chapters.get_all(book_id)
         return {"success": True, "data": {"book": book, "chapters": chapters}}
     except HTTPException:
         raise
@@ -75,7 +75,7 @@ async def api_get_chapters(book_id: int):
         raise HTTPException(status_code=400, detail="无效的书籍 ID")
     database = await get_db()
     try:
-        chapters = await database.get_chapters(book_id)
+        chapters = await database.chapters.get_all(book_id)
         return {"success": True, "data": chapters}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取章节列表失败: {str(e)}")
@@ -95,10 +95,10 @@ async def api_get_chapter_content(book_id: int, chapter_num: int):
         raise HTTPException(status_code=400, detail="无效的章节号")
     database = await get_db()
     try:
-        chapter = await database.get_chapter(book_id, chapter_num)
+        chapter = await database.chapters.get(book_id, chapter_num)
         if not chapter:
             raise HTTPException(status_code=404, detail="章节不存在")
-        content = await database.get_chapter_content(chapter["id"])
+        content = await database.chapters.get_content(chapter["id"])
         return {"success": True, "data": {"chapter": chapter, "content": content}}
     except HTTPException:
         raise
@@ -118,17 +118,17 @@ async def set_book_tags(book_id: int, payload: BookTagsUpdate):
         database = await get_db()
         if book_id < 1:
             raise HTTPException(status_code=400, detail="无效的书籍 ID")
-        book = await database.get_book(book_id)
+        book = await database.books.get(book_id)
         if not book:
             raise HTTPException(status_code=404, detail="书籍不存在")
 
         target = {str(t).strip() for t in payload.tags if str(t).strip()}
-        current = set(await database.get_book_tags(book_id))
+        current = set(await database.tags.get_by_book(book_id))
 
         for t in current - target:
-            await database.remove_book_tag(book_id, t)
+            await database.tags.remove(book_id, t)
         for t in target - current:
-            await database.add_book_tag(book_id, t)
+            await database.tags.add(book_id, t)
         return {"success": True, "data": sorted(target), "message": f"已更新 {len(target)} 个标签"}
     except HTTPException:
         raise
