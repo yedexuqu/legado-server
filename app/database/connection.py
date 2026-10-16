@@ -50,6 +50,7 @@ class Database:
                 author TEXT DEFAULT \'\',
                 type TEXT NOT NULL DEFAULT \'txt\',
                 file_path TEXT NOT NULL UNIQUE,
+                file_fingerprint TEXT DEFAULT '',
                 file_size INTEGER DEFAULT 0,
                 encoding TEXT,
                 total_chapters INTEGER DEFAULT 0,
@@ -136,6 +137,25 @@ class Database:
         except Exception as e:
             logger.warning(
                 "Schema migration failed (ensure books.category column): %s", e, exc_info=True
+            )
+
+        # Migration: add file_fingerprint column if missing.
+        # Ops-reported bug: the original DDL never declared file_fingerprint,
+        # yet app/database/books.py:97 (exists_by_fingerprint) and
+        # scanners/txt_scanner.py read/write it. A prod DB migrated from the old
+        # schema therefore raised "no such column: file_fingerprint" during
+        # background scans. Same guarded pattern as the category migration.
+        try:
+            cursor = await self.db.execute("PRAGMA table_info(books)")
+            column_names = {row[1] for row in await cursor.fetchall()}
+            if "file_fingerprint" not in column_names:
+                await self.db.execute(
+                    "ALTER TABLE books ADD COLUMN file_fingerprint TEXT DEFAULT ''"
+                )
+                logger.info("Schema migration: added missing column books.file_fingerprint")
+        except Exception as e:
+            logger.warning(
+                "Schema migration failed (ensure books.file_fingerprint column): %s", e, exc_info=True
             )
 
         # Migrate existing categories from books table to categories table
@@ -235,12 +255,12 @@ class Database:
         #
         # Idempotency: already-indexed rowids are excluded by the NOT IN guard,
         # so a second run inserts 0 rows and the index is never duplicated.
-        try:
-            async def _scalar_int(sql: str) -> int:
-                cursor = await self.db.execute(sql)
-                row = await cursor.fetchone()
-                return row[0] if row else 0
+        async def _scalar_int(sql: str) -> int:
+            cursor = await self.db.execute(sql)
+            row = await cursor.fetchone()
+            return row[0] if row else 0
 
+        try:
             has_docsize = bool(await _scalar_int(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chapters_fts_docsize'"
             ))
@@ -282,6 +302,40 @@ class Database:
                 )
         except Exception as e:
             logger.warning("FTS backfill failed (chapters_fts): %s", e, exc_info=True)
+
+        # books_fts has the same external-content gap, with a nastier failure
+        # mode: books that existed before the FTS triggers were created were
+        # never indexed (books_fts has never had a backfill). Any UPDATE that
+        # touches one of those rows -- metadata refresh on re-scan, category
+        # edit, the file_fingerprint migration path itself -- fires the
+        # books_au trigger, whose FTS 'delete' command requires the rowid to
+        # be present in the index. For a missing %_docsize entry FTS5 raises
+        # SQLITE_CORRUPT ("database disk image is malformed") and the UPDATE
+        # fails. Verified on a legacy-schema DB: books_fts_docsize=0, UPDATE
+        # fails, backfill then UPDATE succeeds. Same NOT IN guard keeps the
+        # backfill idempotent.
+        try:
+            has_books_docsize = bool(await _scalar_int(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='books_fts_docsize'"
+            ))
+            if has_books_docsize:
+                missing_book_rows = await _scalar_int(
+                    """SELECT COUNT(*) FROM books b
+                       WHERE b.id NOT IN (SELECT rowid FROM books_fts_docsize)"""
+                )
+                if missing_book_rows:
+                    await self.db.execute("""
+                        INSERT INTO books_fts(rowid, title, author)
+                        SELECT b.id, b.title, b.author FROM books b
+                        WHERE b.id NOT IN (SELECT rowid FROM books_fts_docsize)
+                    """)
+                    await self.db.commit()
+                    logger.info(
+                        "FTS backfill: indexed %s missing book row(s) into books_fts",
+                        missing_book_rows,
+                    )
+        except Exception as e:
+            logger.warning("FTS backfill failed (books_fts): %s", e, exc_info=True)
 
         await self.db.commit()
 
