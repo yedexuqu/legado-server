@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}本地书库{% endblock %}</title>
+    {# Inline data: URI favicon — no external file to 404 on, and because an icon is
+       declared the browser never falls back to requesting a root favicon. #}
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20width='24'%20height='24'%20rx='5'%20fill='%234f6ef7'/%3E%3Cg%20fill='none'%20stroke='%23ffffff'%20stroke-width='1.7'%20stroke-linecap='round'%20stroke-linejoin='round'%20transform='translate(3.2,3.2)%20scale(0.73)'%3E%3Cpath%20d='M4%2019.5A2.5%202.5%200%200%201%206.5%2017H20'/%3E%3Cpath%20d='M6.5%202H20v20H6.5A2.5%202.5%200%200%201%204%2019.5v-15A2.5%202.5%200%200%201%206.5%202z'/%3E%3C/g%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/static/css/style.css?v=4.0">
+    <script>
+        /* ── Theme bootstrap: ONE source of truth ──
+         * Precedence, highest first:
+         *   1) localStorage['theme']  — the user's explicit choice in this browser
+         *   2) server-rendered `theme`— the Jinja context value, when a route supplies it
+         *   3) 'light'                — last-resort default
+         * localStorage is only written when it previously had no value (first run);
+         * it is never overwritten with a value that contradicts the user's choice.
+         * The old bootstrap forced 'light' whenever localStorage was empty and then
+         * fought with the server copy — that mismatch is what made the page flash. */
+        (function() {
+            var LS_KEY = 'theme';
+            var serverTheme = "{{ theme|default('') }}";
+            if (serverTheme !== 'light' && serverTheme !== 'dark') serverTheme = '';
+
+            var stored = null;
+            try { stored = localStorage.getItem(LS_KEY); } catch (e) { stored = null; }
+            if (stored !== 'light' && stored !== 'dark') stored = null;
+
+            var theme = stored || serverTheme || 'light';
+            var seeded = theme;                       // value we are allowed to replace below
+            document.documentElement.setAttribute('data-theme', theme);
+
+            if (!stored) {
+                try { localStorage.setItem(LS_KEY, theme); } catch (e) {}
+                if (!serverTheme) {
+                    // Nothing server-rendered: adopt the persisted value from /api/config, once.
+                    fetch('/api/config/key/theme')
+                        .then(function(r) { return r.json(); })
+                        .then(function(j) {
+                            var v = (j && j.success && j.data) ? String(j.data.value) : '';
+                            if (v !== 'light' && v !== 'dark') return;
+                            var cur = null;
+                            try { cur = localStorage.getItem(LS_KEY); } catch (e) {}
+                            if (cur !== seeded) return;   // user toggled meanwhile — keep their choice
+                            if (v === seeded) return;
+                            document.documentElement.setAttribute('data-theme', v);
+                            try { localStorage.setItem(LS_KEY, v); } catch (e) {}
+                            if (typeof updateThemeButton === 'function') updateThemeButton(v);
+                        })
+                        .catch(function() {});
+                }
+            }
+        })();
+    </script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                    <line x1="8" y1="7" x2="16" y2="7"/>
+                    <line x1="8" y1="11" x2="13" y2="11"/>
+                </svg>
+                本地书库
+            </a>
+            <form class="search-form" action="/search" method="get">
+                <input type="text" name="key" placeholder="搜索书名或作者..." required>
+                <button type="submit">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px">
+                        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    搜索
+                </button>
+            </form>
+            <div class="nav-links">
+                <a href="/settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    设置
+                </a>
+                <button type="button" class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                    <svg id="theme-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                    <span class="label" id="theme-label">夜间</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <footer class="footer">
+        <div class="container">
+            <p>Legado Local Server - 本地书库</p>
+        </div>
+    </footer>
+    
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            updateThemeButton(newTheme);
+        }
+        
+        function updateThemeButton(theme) {
+            const svg = document.getElementById('theme-icon-svg');
+            const label = document.getElementById('theme-label');
+            if (theme === 'dark') {
+                // Sun icon
+                svg.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+                label.textContent = '日间';
+            } else {
+                // Moon icon
+                svg.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+                label.textContent = '夜间';
+            }
+        }
+        
+        // Initialize button state on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            updateThemeButton(currentTheme);
+        });
+    </script>
+
+    <!-- Toast stack. Notifications are laid out by .toast-container (flex column,
+         pinned bottom-right) so several visible at once stack up instead of all
+         landing on the exact same coordinates and covering each other. -->
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="false"></div>
+    <script>
+        /* Convenience API: showToast('已保存'), showToast('失败', 'error', 5000) */
+        window.showToast = window.showToast || function(message, type, timeout) {
+            var host = document.getElementById('toast-container') || document.body;
+            var el = document.createElement('div');
+            el.className = 'toast' + (type ? ' ' + type : '');
+            el.setAttribute('role', 'status');
+            el.textContent = message;
+            host.appendChild(el);
+            var ms = (typeof timeout === 'number') ? timeout : 3000;
+            if (ms > 0) setTimeout(function() { el.remove(); }, ms);
+            return el;
+        };
+
+        /* Any toast appended elsewhere in the document is moved into the stack, so
+           the stacking layout works no matter which page/script creates it. */
+        (function() {
+            if (typeof MutationObserver === 'undefined') return;
+            var container = document.getElementById('toast-container');
+            if (!container) return;
+
+            function adopt(node) {
+                if (!node || node.nodeType !== 1) return;
+                if (node.parentNode === container) return;   // already stacked: no-op (prevents loops)
+                if (node.classList && node.classList.contains('toast')) container.appendChild(node);
+            }
+
+            var observer = new MutationObserver(function(records) {
+                for (var i = 0; i < records.length; i++) {
+                    var added = records[i].addedNodes;
+                    for (var j = 0; j < added.length; j++) {
+                        var node = added[j];
+                        adopt(node);
+                        if (node.querySelectorAll) {
+                            var inner = node.querySelectorAll('.toast');
+                            for (var k = 0; k < inner.length; k++) adopt(inner[k]);
+                        }
+                    }
+                }
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+
+            var existing = document.querySelectorAll('.toast');
+            for (var i = 0; i < existing.length; i++) adopt(existing[i]);
+        })();
+    </script>
+</body>
+</html>

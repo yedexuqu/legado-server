@@ -1,0 +1,997 @@
+{% extends "base.html" %}
+
+{% block title %}系统设置 - 本地书库{% endblock %}
+
+{% block content %}
+<div class="settings-page">
+    <h1>系统设置</h1>
+    
+    <div class="settings-section">
+        <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            书籍目录
+        </h2>
+        <div id="dir-list"></div>
+        <div class="add-dir-form">
+            <input type="text" id="new-dir-path" placeholder="目录路径，如 /books/txt" style="flex:2">
+            <select id="new-dir-category" style="flex:1">
+                <option value="默认">默认分类</option>
+            </select>
+            <button onclick="addDir()" class="btn btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                添加
+            </button>
+        </div>
+        <div class="btn-row">
+            <button onclick="saveDirs()" class="btn btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                保存目录
+            </button>
+            <button onclick="triggerScan()" class="btn btn-secondary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                立即扫描
+            </button>
+            <label class="auto-scan-toggle"><input type="checkbox" id="auto_scan_dir" onchange="toggleAutoScan()"> 启动时扫描</label>
+        </div>
+    </div>
+
+    <div class="settings-section">
+        <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+            分类管理
+        </h2>
+        <div id="category-list"></div>
+        <div class="add-dir-form">
+            <input type="text" id="new-category-name" placeholder="新分类名称">
+            <button onclick="addCategory()" class="btn btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                增加
+            </button>
+            <button onclick="renameCategory()" class="btn btn-secondary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                重命名选中
+            </button>
+            <button onclick="deleteCategory()" class="btn btn-danger">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                删除选中
+            </button>
+        </div>
+        <p class="form-hint">增加：创建新分类（供目录选择） | 重命名：修改已有分类名称 | 删除：将书籍移至默认分类</p>
+    </div>
+
+    <div class="settings-section">
+        <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            标签管理
+        </h2>
+        <div id="tag-list"></div>
+        <div class="add-dir-form">
+            <input type="text" id="new-tag-name" placeholder="新标签名称">
+            <button onclick="addTag()" class="btn btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                增加
+            </button>
+            <button onclick="renameTag()" class="btn btn-secondary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                重命名选中
+            </button>
+            <button onclick="deleteTag()" class="btn btn-danger">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                删除选中
+            </button>
+        </div>
+        <div class="add-dir-form" style="margin-top:8px">
+            <span class="form-label">合并：</span>
+            <select id="merge-source-tag" style="flex:1">
+                <option value="">选择源标签</option>
+            </select>
+            <span class="form-label">→</span>
+            <input type="text" id="merge-target-tag" placeholder="目标标签名称" style="flex:1">
+            <button onclick="mergeTag()" class="btn btn-warning">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+                合并
+            </button>
+        </div>
+        <p class="form-hint">增加：创建新标签 | 重命名：修改已有标签名 | 合并：将源标签的所有书籍转移到目标标签</p>
+    </div>
+
+    <div class="settings-section">
+        <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            书源导出
+        </h2>
+        <p>导出 Legado 兼容的书源，可在 Legado 阅读器中导入使用。</p>
+        <div class="source-btn-row">
+            <button onclick="showModal('qr-modal')" class="btn btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                二维码
+            </button>
+            <button onclick="showModal('link-modal')" class="btn btn-secondary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                链接
+            </button>
+            <button onclick="showModal('download-modal')" class="btn btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                下载JSON
+            </button>
+        </div>
+        <div class="source-url-row">
+            <input type="text" id="book_source_url" value="{{ config.general.book_source_url.value if config.general and config.general.book_source_url else '' }}" placeholder="留空自动检测">
+            <button onclick="saveConfig('book_source_url', document.getElementById('book_source_url').value, 'general')" class="btn btn-secondary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                保存地址
+            </button>
+        </div>
+    </div>
+
+    <div id="qr-modal" class="modal" onclick="if(event.target===this)hideModal('qr-modal')">
+        <div class="modal-content">
+            <span class="modal-close" onclick="hideModal('qr-modal')">&times;</span>
+            <h3>扫码导入书源</h3>
+            <p class="form-hint">用 Legado 扫描二维码自动导入书源</p>
+            <div id="qr-container">
+                <img id="qr-image" style="max-width:220px; border:1px solid var(--border-color); border-radius:8px;">
+                <p id="qr-url" class="form-hint" style="margin-top:8px; word-break:break-all;"></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="link-modal" class="modal" onclick="if(event.target===this)hideModal('link-modal')">
+        <div class="modal-content">
+            <span class="modal-close" onclick="hideModal('link-modal')">&times;</span>
+            <h3>链接导入书源</h3>
+            <p class="form-hint">复制书源链接，在 Legado 中手动粘贴导入</p>
+            <div class="add-dir-form">
+                <input type="text" id="source-link" readonly style="flex:1">
+                <button onclick="copySourceLink()" class="btn btn-secondary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    复制
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="download-modal" class="modal" onclick="if(event.target===this)hideModal('download-modal')">
+        <div class="modal-content">
+            <span class="modal-close" onclick="hideModal('download-modal')">&times;</span>
+            <h3>下载 JSON 文件</h3>
+            <p class="form-hint">下载书源 JSON 文件，导入到 Legado</p>
+            <div class="export-buttons">
+                <a href="/sources/text.json" download class="btn btn-primary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    TXT 书源
+                </a>
+                <a href="/sources/audio.json" download class="btn btn-secondary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                    有声书书源
+                </a>
+                <a href="/sources/export" download class="btn btn-primary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    完整书源
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-section">
+        <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M20.46 14.34A10 10 0 0 0 14.34 2"/></svg>
+            AI设置
+        </h2>
+        <div class="ai-field">
+            <label for="ai_api_base">API地址</label>
+            <input type="text" id="ai_api_base" value="{{ config.ai.ai_api_base.value if config.ai and config.ai.ai_api_base else 'https://api.openai.com/v1' }}">
+        </div>
+        <div class="ai-field">
+            <label for="ai_api_key">API密钥</label>
+            <input type="password" id="ai_api_key" value="{{ config.ai.ai_api_key.value if config.ai and config.ai.ai_api_key else '' }}" placeholder="sk-...">
+        </div>
+        <div class="ai-field">
+            <label for="ai_model">模型</label>
+            <input type="text" id="ai_model" value="{{ config.ai.ai_model.value if config.ai and config.ai.ai_model else 'gpt-3.5-turbo' }}">
+        </div>
+        <div class="setting-item" style="margin-top: 16px;">
+            <label>启用功能</label>
+            <div class="checkbox-group">
+                <label><input type="checkbox" name="ai_feature" value="detect_chapters" {{ 'checked' if 'detect_chapters' in (config.ai.ai_enabled_features.value if config.ai and config.ai.ai_enabled_features else []) else '' }}>章节识别</label>
+                <label><input type="checkbox" name="ai_feature" value="fix_ocr" {{ 'checked' if 'fix_ocr' in (config.ai.ai_enabled_features.value if config.ai and config.ai.ai_enabled_features else []) else '' }}>OCR修复</label>
+                <label><input type="checkbox" name="ai_feature" value="merge_duplicates" {{ 'checked' if 'merge_duplicates' in (config.ai.ai_enabled_features.value if config.ai and config.ai.ai_enabled_features else []) else '' }}>重复合并</label>
+                <label><input type="checkbox" name="ai_feature" value="extract_book_name" {{ 'checked' if 'extract_book_name' in (config.ai.ai_enabled_features.value if config.ai and config.ai.ai_enabled_features else []) else '' }}>AI书名识别</label>
+                <label><input type="checkbox" name="ai_feature" value="extract_category" {{ 'checked' if 'extract_category' in (config.ai.ai_enabled_features.value if config.ai and config.ai.ai_enabled_features else []) else '' }}>AI分类提取</label>
+                <label><input type="checkbox" name="ai_feature" value="extract_tags" {{ 'checked' if 'extract_tags' in (config.ai.ai_enabled_features.value if config.ai and config.ai.ai_enabled_features else []) else '' }}>AI标签提取</label>
+            </div>
+        </div>
+        <div class="btn-row">
+            <button onclick="saveAIConfig()" class="btn btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                保存AI设置
+            </button>
+            <button onclick="testAIConnection()" class="btn btn-secondary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                测试连接
+            </button>
+        </div>
+    </div>
+
+    <div class="settings-section">
+        <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+            正则识别设置
+        </h2>
+        <p class="section-desc">关闭 AI 识别时，使用以下正则表达式提取书名、作者和章节信息。每行一个正则，支持命名捕获组 <code>(?P&lt;name&gt;...)</code>。</p>
+
+        <div class="setting-item">
+            <label for="regex_book_name">书名正则</label>
+            <textarea id="regex_book_name" rows="3" placeholder="每行一个正则"></textarea>
+        </div>
+        <div class="setting-item">
+            <label for="regex_author">作者正则</label>
+            <textarea id="regex_author" rows="3" placeholder="每行一个正则"></textarea>
+        </div>
+        <div class="setting-item">
+            <label for="regex_chapter">章节正则</label>
+            <textarea id="regex_chapter" rows="3" placeholder="每行一个正则"></textarea>
+        </div>
+        <div class="ai-field">
+            <label for="min_chapter_score">最小匹配分</label>
+            <input type="number" id="min_chapter_score" min="0" max="10" step="0.5" style="width: 100px;">
+        </div>
+        <div class="btn-row">
+            <button onclick="saveRegexConfig()" class="btn btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                保存正则设置
+            </button>
+            <button onclick="resetRegexDefaults()" class="btn btn-secondary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                恢复默认
+            </button>
+        </div>
+    </div>
+
+    <div class="settings-section">
+        <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            系统信息
+        </h2>
+        <div class="stats-grid" id="stats">
+            <div class="stat-item"><span class="stat-value" id="stat-books">-</span><span class="stat-label">书籍总数</span></div>
+            <div class="stat-item"><span class="stat-value" id="stat-chapters">-</span><span class="stat-label">章节数</span></div>
+            <div class="stat-item"><span class="stat-value" id="stat-size">-</span><span class="stat-label">总大小</span></div>
+        </div>
+        <button onclick="refreshStats()" class="btn btn-secondary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            刷新统计
+        </button>
+    </div>
+
+    <div class="settings-section">
+        <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            管理员设置
+        </h2>
+        <div class="admin-info">
+            <p>当前管理员: <strong>{{ admin_user }}</strong></p>
+            <a href="/logout" class="btn btn-secondary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                退出登录
+            </a>
+        </div>
+        <div class="change-password-form">
+            <h3>修改密码</h3>
+            <div class="form-group">
+                <label>原密码</label>
+                <input type="password" id="old-password" placeholder="输入原密码">
+            </div>
+            <div class="form-group">
+                <label>新密码</label>
+                <input type="password" id="new-password" placeholder="输入新密码（至少6位）">
+            </div>
+            <div class="form-group">
+                <label>确认新密码</label>
+                <input type="password" id="confirm-password" placeholder="再次输入新密码">
+            </div>
+            <button onclick="changePassword()" class="btn btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                修改密码
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function escapeHtml(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+let dirData = [];
+let selectedDirIdx = -1;
+let categories = [];
+let tags = [];
+
+async function init() {
+    await loadDirs();
+    await loadCategories();
+    renderDirs();
+    await loadTags();
+    initAutoScan();
+    loadSourceLink();
+    refreshStats();
+}
+
+async function loadDirs() {
+    try {
+        const r = await fetch('/api/config/key/book_dirs');
+        const j = await r.json();
+        if (j.success && j.data && j.data.value) {
+            dirData = j.data.value.map(d => typeof d === 'string' ? {path: d, category: '默认'} : d);
+        }
+    } catch(e) { dirData = []; }
+}
+
+function renderDirs() {
+    const el = document.getElementById('dir-list');
+    if (!dirData.length) { el.innerHTML = '<p style="color:var(--text-muted)">暂无目录</p>'; }
+    else {
+        el.innerHTML = dirData.map((d, i) => 
+            '<div class="dir-item ' + (i === selectedDirIdx ? 'selected' : '') + '" onclick="selectDir(' + i + ')">' +
+            '<span class="dir-path">' + escapeHtml(d.path) + '</span>' +
+            '<span class="dir-cat">' + escapeHtml(d.category) + '</span>' +
+            '<button class="btn-sm btn-danger" onclick="event.stopPropagation();removeDir(' + i + ')">✕</button></div>'
+        ).join('');
+    }
+    const sel = document.getElementById('new-dir-category');
+    const catNames = [...new Set([...dirData.map(d => d.category), ...categories.map(c => c.name)])];
+    sel.innerHTML = catNames.map(c => '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>').join('');
+}
+
+function selectDir(idx) { selectedDirIdx = idx; renderDirs(); }
+
+async function addDir() {
+    const path = document.getElementById('new-dir-path').value.trim();
+    let cat = document.getElementById('new-dir-category').value;
+    if (cat === '_new_') cat = prompt('输入新分类名称:');
+    if (!path || !cat) return;
+    dirData.push({path, category: cat});
+    document.getElementById('new-dir-path').value = '';
+    renderDirs();
+    await saveDirs();
+}
+
+async function removeDir(idx) {
+    const dir = dirData[idx];
+    if (!confirm('删除目录 "' + dir.path + '"？该目录下已入库的书籍将同步删除（源文件不会被删除）')) return;
+    try {
+        const r = await fetch('/api/config/delete-dir', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({key:'delete', value:dir.path, category:'general'})});
+        const j = await r.json();
+        showNotification(j.message || (j.success ? '已删除' : '删除失败'), j.success ? 'success' : 'error');
+    } catch(e) { showNotification('删除失败', 'error'); }
+    dirData.splice(idx, 1);
+    if (selectedDirIdx >= dirData.length) selectedDirIdx = -1;
+    renderDirs();
+}
+
+async function saveDirs() {
+    await saveConfig('book_dirs', dirData, 'general');
+}
+
+async function loadCategories() {
+    try {
+        const r = await fetch('/api/categories');
+        const j = await r.json();
+        if (j.success) categories = j.data;
+    } catch(e) { categories = []; }
+    renderCategories();
+}
+
+function renderCategories() {
+    const el = document.getElementById('category-list');
+    if (!categories.length) { el.innerHTML = '<p style="color:var(--text-muted)">暂无分类</p>'; return; }
+    el.innerHTML = categories.map((c, i) =>
+        '<div class="dir-item" onclick="this.classList.toggle(\'selected\')" data-name="' + escapeHtml(c.name) + '">' +
+        '<span class="dir-path">' + escapeHtml(c.name) + '</span>' +
+        '<span class="dir-cat">' + (parseInt(c.count, 10) || 0) + '本</span></div>'
+    ).join('');
+}
+
+async function addCategory() {
+    const name = document.getElementById('new-category-name').value.trim();
+    if (!name) return alert('请输入分类名称');
+    try {
+        const r = await fetch('/api/categories', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name})});
+        const j = await r.json();
+        showNotification(j.message || (j.success ? '添加成功' : '添加失败'), j.success ? 'success' : 'error');
+        if (j.success) {
+            document.getElementById('new-category-name').value = '';
+            await loadCategories();
+    renderDirs();
+        }
+    } catch(e) { showNotification('添加失败', 'error'); }
+}
+
+async function renameCategory() {
+    const sel = document.querySelector('#category-list .dir-item.selected');
+    if (!sel) return alert('请先选择一个分类');
+    const oldName = sel.dataset.name;
+    const newName = document.getElementById('new-category-name').value.trim();
+    if (!newName) return alert('请输入新名称');
+    try {
+        const __cr = await fetch('/api/categories/rename', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({old: oldName, new: newName})});
+        if (!__cr.ok) { showNotification('重命名失败: HTTP ' + __cr.status, 'error'); return; }
+        showNotification('重命名成功', 'success');
+        await loadCategories();
+    renderDirs();
+    } catch(e) { showNotification('重命名失败', 'error'); }
+}
+
+async function deleteCategory() {
+    const sel = document.querySelector('#category-list .dir-item.selected');
+    if (!sel) return alert('请先选择一个分类');
+    if (!confirm('删除分类 "' + sel.dataset.name + '"？书籍将移至默认分类')) return;
+    try {
+        await fetch('/api/categories/' + encodeURIComponent(sel.dataset.name), {method:'DELETE'});
+        showNotification('已删除', 'success');
+        await loadCategories();
+    renderDirs();
+    } catch(e) { showNotification('删除失败', 'error'); }
+}
+
+async function loadTags() {
+    try {
+        const r = await fetch('/api/tags');
+        const j = await r.json();
+        if (j.success) tags = j.data;
+    } catch(e) { tags = []; }
+    renderTags();
+}
+
+function renderTags() {
+    const el = document.getElementById('tag-list');
+    if (!tags.length) { el.innerHTML = '<p style="color:var(--text-muted)">暂无标签</p>'; return; }
+    el.innerHTML = tags.map(t =>
+        '<div class="dir-item" onclick="this.classList.toggle(\'selected\')" data-name="' + escapeHtml(t.name) + '">' +
+        '<span class="dir-path">' + escapeHtml(t.name) + '</span>' +
+        '<span class="dir-cat">' + (parseInt(t.count, 10) || 0) + '本</span></div>'
+    ).join('');
+    const sel = document.getElementById('merge-source-tag');
+    sel.innerHTML = '<option value="">选择源标签</option>' + tags.map(t => '<option value="' + escapeHtml(t.name) + '">' + escapeHtml(t.name) + ' (' + (parseInt(t.count, 10) || 0) + '本)</option>').join('');
+}
+
+async function addTag() {
+    const name = document.getElementById('new-tag-name').value.trim();
+    if (!name) return alert('请输入标签名称');
+    try {
+        const r = await fetch('/api/tags', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name})});
+        const j = await r.json();
+        showNotification(j.message || (j.success ? '添加成功' : '添加失败'), j.success ? 'success' : 'error');
+        if (j.success) {
+            document.getElementById('new-tag-name').value = '';
+            await loadTags();
+        }
+    } catch(e) { showNotification('添加失败', 'error'); }
+}
+
+async function renameTag() {
+    const sel = document.querySelector('#tag-list .dir-item.selected');
+    if (!sel) return alert('请先选择一个标签');
+    const oldName = sel.dataset.name;
+    const newName = prompt('输入新标签名:');
+    if (!newName) return;
+    try {
+        const __tr = await fetch('/api/tags/rename', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({old: oldName, new: newName})});
+        if (!__tr.ok) { showNotification('重命名失败: HTTP ' + __tr.status, 'error'); return; }
+        showNotification('重命名成功', 'success');
+        await loadTags();
+    } catch(e) { showNotification('重命名失败', 'error'); }
+}
+
+async function mergeTag() {
+    const source = document.getElementById('merge-source-tag').value;
+    const target = document.getElementById('merge-target-tag').value.trim();
+    if (!source) return alert('请选择源标签');
+    if (!target) return alert('请输入目标标签');
+    if (source === target) return alert('源标签和目标标签不能相同');
+    if (!confirm('将 "' + source + '" 的所有书籍合并到 "' + target + '"？\n\n源标签将被删除，书籍保留目标标签。')) return;
+    try {
+        const r = await fetch('/api/tags/merge', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({source: source, target: target})});
+        const j = await r.json();
+        showNotification(j.message || (j.success ? '合并成功' : '合并失败'), j.success ? 'success' : 'error');
+        if (j.success) {
+            document.getElementById('merge-target-tag').value = '';
+            await loadTags();
+        }
+    } catch(e) { showNotification('合并失败', 'error'); }
+}
+
+async function deleteTag() {
+    const sel = document.querySelector('#tag-list .dir-item.selected');
+    if (!sel) return alert('请先选择一个标签');
+    if (!confirm('删除标签 "' + sel.dataset.name + '"？')) return;
+    try {
+        await fetch('/api/tags/' + encodeURIComponent(sel.dataset.name), {method:'DELETE'});
+        showNotification('已删除', 'success');
+        await loadTags();
+    } catch(e) { showNotification('删除失败', 'error'); }
+}
+
+async function saveGeneralConfig() {
+    showNotification('设置已保存', 'success');
+}
+
+function isMaskedKey(v) {
+    // backend renders the key masked as "****" (short) or "abcd...wxyz"
+    return !v || v === '****' || /^.{4}\.\.\..{4}$/.test(v);
+}
+
+async function saveAIConfig() {
+    const features = Array.from(document.querySelectorAll('input[name="ai_feature"]:checked')).map(cb => cb.value);
+    await saveConfig('ai_api_base', document.getElementById('ai_api_base').value, 'ai');
+    const keyVal = document.getElementById('ai_api_key').value;
+    if (isMaskedKey(keyVal)) {
+        showNotification('API 密钥未修改（掩码/留空即不覆盖原密钥）', 'info');
+    } else {
+        await saveConfig('ai_api_key', keyVal, 'ai');
+    }
+    await saveConfig('ai_model', document.getElementById('ai_model').value, 'ai');
+    await saveConfig('ai_enabled_features', features, 'ai');
+}
+
+async function saveConfig(key, value, category) {
+    try {
+        const r = await fetch('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({key, value, category})});
+        const j = await r.json();
+        showNotification(j.success ? '保存成功' : '保存失败', j.success ? 'success' : 'error');
+    } catch(e) { showNotification('保存失败', 'error'); }
+}
+
+async function triggerScan() {
+    showNotification('正在扫描...', 'info');
+    try {
+        const r = await fetch('/api/config/scan', {method:'POST'});
+        const j = await r.json();
+        showNotification(j.success ? '扫描完成' : '扫描失败', j.success ? 'success' : 'error');
+        if (j.success) refreshStats();
+    } catch(e) { showNotification('扫描超时（可能在后台运行）', 'info'); }
+}
+
+async function testAIConnection() {
+    showNotification('正在测试...', 'info');
+    try {
+        const r = await fetch('/api/ai/test', {method:'POST'});
+        const j = await r.json();
+        showNotification(j.success ? '连接成功' : '连接失败: ' + (j.message||''), j.success ? 'success' : 'error');
+    } catch(e) { showNotification('测试失败', 'error'); }
+}
+
+async function refreshStats() {
+    try {
+        const r = await fetch('/api/stats');
+        const j = await r.json();
+        if (j.success) {
+            document.getElementById('stat-books').textContent = j.data.book_count;
+            document.getElementById('stat-chapters').textContent = j.data.total_chapters;
+            document.getElementById('stat-size').textContent = formatSize(j.data.total_size);
+        }
+    } catch(e) {}
+}
+
+function loadSourceLink() {
+    const host = window.location.host;
+    const protocol = window.location.protocol;
+    document.getElementById('source-link').value = protocol + '//' + host + '/sources/text.json';
+}
+
+async function showSourceQR() {
+    try {
+        const r = await fetch('/sources/qr');
+        let j = {};
+        try { j = await r.json(); } catch(e) { j = {}; }
+        if (r.ok && j.success) {
+            document.getElementById('qr-image').src = j.qr;
+            document.getElementById('qr-url').textContent = j.url;
+            document.getElementById('qr-container').style.display = 'block';
+        } else {
+            showNotification('生成二维码失败: ' + (j.message || ('HTTP ' + r.status)), 'error');
+        }
+    } catch(e) { showNotification('生成二维码失败: ' + e.message, 'error'); }
+}
+
+function copySourceLink() {
+    const input = document.getElementById('source-link');
+    input.select();
+    document.execCommand('copy');
+    showNotification('链接已复制', 'success');
+}
+
+
+function showModal(id) {
+    document.getElementById(id).style.display = 'flex';
+    if (id === 'qr-modal') showSourceQR();
+    if (id === 'link-modal') loadSourceLink();
+}
+
+function hideModal(id) {
+    document.getElementById(id).style.display = 'none';
+}
+
+async function toggleAutoScan() {
+    const checked = document.getElementById('auto_scan_dir').checked;
+    await saveConfig('auto_scan', checked ? 'true' : 'false', 'general');
+    showNotification(checked ? '已开启启动时自动扫描' : '已关闭启动时自动扫描', 'success');
+}
+
+async function initAutoScan() {
+    try {
+        const r = await fetch('/api/config/key/auto_scan');
+        const j = await r.json();
+        if (j.success && j.data) {
+            const val = j.data.value;
+            document.getElementById('auto_scan_dir').checked = (val === 'true' || val === true);
+        }
+    } catch(e) {}
+}
+
+function formatSize(b) { if (!b) return '0 B'; const k=1024,s=['B','KB','MB','GB'],i=Math.floor(Math.log(b)/Math.log(k)); return (b/Math.pow(k,i)).toFixed(1)+' '+s[i]; }
+
+function showNotification(msg, type) {
+    const n = document.createElement('div');
+    n.className = 'notification ' + type;
+    n.textContent = msg;
+    document.body.appendChild(n);
+    setTimeout(() => n.remove(), 3000);
+}
+
+init();
+
+/* ── Regex Config ── */
+const REGEX_DEFAULTS = {
+    regex_book_name_patterns: [
+        '(.+?)\\s*[-—\\|]\\s*(.+)',
+        '《(.+?)》',
+        '\\[(.+?)\\]'
+    ],
+    regex_author_patterns: [
+        '[-—\\|]\\s*(.+?)\\s*$',
+        '作者[：:]\\s*(.+)',
+        'by\\s+(.+)',
+        '(.+?)\\s*著'
+    ],
+    chapter_patterns: [
+        '第[\\d一二三四五六七八九十百千]+[章节回卷集部篇]',
+        'Chapter\\s+\\d+',
+        'CHAPTER\\s+\\d+'
+    ],
+    min_chapter_score: '2'
+};
+
+async function loadRegexConfig() {
+    const keys = ['regex_book_name_patterns', 'regex_author_patterns', 'chapter_patterns', 'min_chapter_score'];
+    for (const key of keys) {
+        try {
+            const r = await fetch('/api/config/key/' + key);
+            const j = await r.json();
+            if (j.success && j.data && j.data.value !== undefined) {
+                const val = j.data.value;
+                const el = document.getElementById(key === 'chapter_patterns' ? 'regex_chapter' : key === 'min_chapter_score' ? 'min_chapter_score' : key);
+                if (el) {
+                    if (Array.isArray(val)) {
+                        el.value = val.join('\n');
+                    } else {
+                        el.value = String(val);
+                    }
+                }
+            }
+        } catch(e) {}
+    }
+    // If all empty, load defaults
+    const bookEl = document.getElementById('regex_book_name');
+    if (bookEl && !bookEl.value.trim()) {
+        bookEl.value = REGEX_DEFAULTS.regex_book_name_patterns.join('\n');
+        document.getElementById('regex_author').value = REGEX_DEFAULTS.regex_author_patterns.join('\n');
+        document.getElementById('regex_chapter').value = REGEX_DEFAULTS.chapter_patterns.join('\n');
+        document.getElementById('min_chapter_score').value = REGEX_DEFAULTS.min_chapter_score;
+    }
+}
+
+async function saveRegexConfig() {
+    const bookLines = document.getElementById('regex_book_name').value.split('\n').map(s => s.trim()).filter(Boolean);
+    const authorLines = document.getElementById('regex_author').value.split('\n').map(s => s.trim()).filter(Boolean);
+    const chapterLines = document.getElementById('regex_chapter').value.split('\n').map(s => s.trim()).filter(Boolean);
+    const score = document.getElementById('min_chapter_score').value || '2';
+
+    await saveConfig('regex_book_name_patterns', bookLines, 'scanner');
+    await saveConfig('regex_author_patterns', authorLines, 'scanner');
+    await saveConfig('chapter_patterns', chapterLines, 'scanner');
+    await saveConfig('min_chapter_score', score, 'scanner');
+}
+
+function resetRegexDefaults() {
+    document.getElementById('regex_book_name').value = REGEX_DEFAULTS.regex_book_name_patterns.join('\n');
+    document.getElementById('regex_author').value = REGEX_DEFAULTS.regex_author_patterns.join('\n');
+    document.getElementById('regex_chapter').value = REGEX_DEFAULTS.chapter_patterns.join('\n');
+    document.getElementById('min_chapter_score').value = REGEX_DEFAULTS.min_chapter_score;
+    showNotification('已恢复默认正则', 'info');
+}
+
+// Load regex config on init
+loadRegexConfig();
+
+function changePassword() {
+    const oldPwd = document.getElementById('old-password').value;
+    const newPwd = document.getElementById('new-password').value;
+    const confirmPwd = document.getElementById('confirm-password').value;
+    
+    if (!oldPwd || !newPwd || !confirmPwd) {
+        showToast('请填写所有密码字段', 'error');
+        return;
+    }
+    if (newPwd.length < 6) {
+        showToast('新密码至少需要6位', 'error');
+        return;
+    }
+    if (newPwd !== confirmPwd) {
+        showToast('两次输入的新密码不一致', 'error');
+        return;
+    }
+    
+    fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({old_password: oldPwd, new_password: newPwd})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast('密码修改成功');
+            document.getElementById('old-password').value = '';
+            document.getElementById('new-password').value = '';
+            document.getElementById('confirm-password').value = '';
+        } else {
+            showToast(data.detail || '修改失败', 'error');
+        }
+    })
+    .catch(() => showToast('修改失败', 'error'));
+}
+
+function changePassword() {
+    const oldPwd = document.getElementById('old-password').value;
+    const newPwd = document.getElementById('new-password').value;
+    const confirmPwd = document.getElementById('confirm-password').value;
+    
+    if (!oldPwd || !newPwd || !confirmPwd) {
+        showToast('请填写所有密码字段', 'error');
+        return;
+    }
+    if (newPwd.length < 6) {
+        showToast('新密码至少需要6位', 'error');
+        return;
+    }
+    if (newPwd !== confirmPwd) {
+        showToast('两次输入的新密码不一致', 'error');
+        return;
+    }
+    
+    fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({old_password: oldPwd, new_password: newPwd})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast('密码修改成功');
+            document.getElementById('old-password').value = '';
+            document.getElementById('new-password').value = '';
+            document.getElementById('confirm-password').value = '';
+        } else {
+            showToast(data.detail || '修改失败', 'error');
+        }
+    })
+    .catch(() => showToast('修改失败', 'error'));
+}
+</script>
+
+<style>
+/* ── Page Layout ── */
+.settings-page { max-width: 800px; margin: 0 auto; padding: 24px 20px; position: relative; z-index: 1; }
+.settings-page h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 28px; color: var(--text-primary); letter-spacing: -0.02em; }
+
+/* ── Section Card ── */
+.settings-section {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(170%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(170%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    margin-bottom: 20px;
+    box-shadow: var(--glass-shadow), var(--glass-inset);
+}
+.settings-section h2 {
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-primary);
+    font-size: 1.05rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.settings-section h2 svg { width: 18px; height: 18px; color: var(--accent); flex-shrink: 0; }
+
+/* ── Setting Items (label + input rows) ── */
+.setting-item { margin-bottom: 16px; }
+.setting-item:last-child { margin-bottom: 0; }
+.setting-item label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.88rem; color: var(--text-primary); }
+.setting-item input,
+.setting-item textarea,
+.setting-item select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    background: var(--glass-bg-subtle);
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    line-height: 1.6;
+    resize: vertical;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+.setting-item textarea { min-height: 72px; }
+.setting-item input:focus,
+.setting-item textarea:focus,
+.setting-item select:focus {
+    border-color: var(--accent);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* ── AI Config: inline label + input ── */
+.ai-field { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.ai-field:last-child { margin-bottom: 0; }
+.ai-field label { flex-shrink: 0; width: 80px; font-weight: 500; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 0; }
+.ai-field input { flex: 1; }
+
+/* ── Directory / Tag List Items ── */
+.dir-list { margin-bottom: 12px; }
+.dir-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    margin-bottom: 6px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    border: 1px solid transparent;
+    background: var(--glass-bg-subtle);
+    transition: all 0.15s;
+}
+.dir-item:last-child { margin-bottom: 0; }
+.dir-item:hover { background: var(--accent-light); border-color: rgba(79,110,247,0.15); }
+.dir-item.selected { border-color: var(--accent); background: var(--accent-light); }
+.dir-path { flex: 1; font-family: "SF Mono", "Fira Code", monospace; font-size: 0.82rem; color: var(--text-primary); word-break: break-all; }
+.dir-cat { font-size: 0.75rem; color: var(--text-muted); background: var(--glass-bg); padding: 2px 8px; border-radius: 10px; flex-shrink: 0; }
+.btn-sm { padding: 4px 10px; font-size: 0.75rem; border: none; border-radius: 6px; cursor: pointer; background: rgba(239,68,68,0.1); color: #ef4444; transition: all var(--transition); }
+.btn-sm:hover { background: #ef4444; color: #fff; }
+
+/* ── Add Form Row ── */
+.add-dir-form { display: flex; gap: 8px; margin-top: 14px; align-items: center; }
+.add-dir-form input,
+.add-dir-form select {
+    padding: 9px 12px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    background: var(--glass-bg-subtle);
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: border-color var(--transition);
+}
+.add-dir-form input:focus,
+.add-dir-form select:focus { border-color: var(--accent); outline: none; }
+
+/* ── Buttons ── */
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.btn {
+    padding: 9px 18px;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all var(--transition);
+    white-space: nowrap;
+}
+.btn:active { transform: scale(0.97); }
+.btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+.btn-primary { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(79,110,247,0.25); }
+.btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(79,110,247,0.3); }
+.btn-secondary { background: var(--glass-bg-subtle); color: var(--text-secondary); border: 1px solid var(--glass-border); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.btn-danger { background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
+.btn-danger:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
+.btn-warning { background: rgba(245,158,11,0.1); color: #d97706; border: 1px solid rgba(245,158,11,0.2); }
+.btn-warning:hover { background: #f59e0b; color: #fff; border-color: #f59e0b; }
+
+/* ── Checkbox Group ── */
+.checkbox-group { display: flex; flex-wrap: wrap; gap: 16px; padding: 4px 0; }
+.checkbox-group label { display: flex; align-items: center; gap: 6px; font-weight: normal; font-size: 0.88rem; color: var(--text-secondary); cursor: pointer; }
+.checkbox-group label input { accent-color: var(--accent); }
+
+/* ── Stats Grid ── */
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
+.stat-item {
+    text-align: center;
+    padding: 20px 14px;
+    background: var(--glass-bg-subtle);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: var(--glass-shadow), var(--glass-inset);
+}
+.stat-value { display: block; font-size: 1.6rem; font-weight: 700; color: var(--accent); letter-spacing: -0.02em; line-height: 1.2; }
+.stat-label { display: block; font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; }
+
+/* ── Notification Toast ── */
+.notification {
+    position: fixed; top: 20px; right: 20px;
+    padding: 12px 20px;
+    border-radius: var(--radius-md);
+    color: #fff; font-weight: 500; font-size: 0.88rem;
+    z-index: 1000;
+    animation: slideIn 0.3s var(--ease-out);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+.notification.success { background: rgba(34,197,94,0.92); }
+.notification.error { background: rgba(239,68,68,0.92); }
+.notification.info { background: rgba(59,130,246,0.92); }
+@keyframes slideIn { from { transform: translateX(100%) scale(0.95); opacity: 0; } to { transform: translateX(0) scale(1); opacity: 1; } }
+
+/* ── Helpers ── */
+.form-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 10px; line-height: 1.5; }
+.form-label { font-size: 0.82rem; color: var(--text-secondary); white-space: nowrap; }
+.section-desc { font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.5; }
+
+/* ── Export Buttons ── */
+.export-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+.export-buttons .btn { text-decoration: none; }
+
+/* ── Source URL Row ── */
+.source-url-row { display: flex; gap: 10px; align-items: flex-end; margin-top: 14px; }
+.source-url-row input { flex: 1; }
+
+/* ── Modal ── */
+.modal {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    z-index: 1001; justify-content: center; align-items: center;
+}
+.modal-content {
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 28px; max-width: 420px; width: 90%;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.15), var(--glass-inset);
+    position: relative;
+}
+.modal-close { position: absolute; top: 14px; right: 18px; font-size: 22px; cursor: pointer; color: var(--text-muted); transition: color var(--transition); line-height: 1; }
+.modal-close:hover { color: var(--text-primary); }
+.modal-content h3 { margin: 0 0 10px 0; color: var(--text-primary); font-size: 1.05rem; }
+.source-btn-row { display: flex; gap: 10px; margin-top: 14px; }
+
+/* ── Auto Scan Toggle ── */
+.auto-scan-toggle { display: inline-flex; align-items: center; margin-left: 10px; font-size: 0.82rem; color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
+.auto-scan-toggle input { margin-right: 5px; accent-color: var(--accent); }
+</style>
+{% endblock %}

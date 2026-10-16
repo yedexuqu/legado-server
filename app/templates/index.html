@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}本地书库{% endblock %}
+
+{% block content %}
+{# Total page count / filter base URL (base_url keeps raw filter values, URL-encoded) #}
+{% set total_pages = ((total / per_page)|int + (1 if total % per_page > 0 else 0)) %}
+{% set base_url = ('/?category=' + (current_category|urlencode)) if current_category else (('/?tag=' + (current_tag|urlencode)) if current_tag else '/') %}
+{% set page_join = '?' if base_url == '/' else '&' %}
+{# Inline placeholder cover used when /cover/{id} cannot be loaded #}
+{% set cover_onerror = "this.onerror=null;this.src='data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%203%204%22%3E%3Crect%20width%3D%223%22%20height%3D%224%22%20fill%3D%22%23232630%22%2F%3E%3Cpath%20d%3D%22M1%203.2V1.2l1-.16V3%22%20fill%3D%22none%22%20stroke%3D%22%234f6ef7%22%20stroke-width%3D%22.12%22%2F%3E%3C%2Fsvg%3E'" %}
+<div class="book-list">
+    <div class="filter-bar">
+        <div class="category-tabs">
+            <a href="/" class="tab {% if not current_category and not current_tag %}active{% endif %}">全部</a>
+            {% for cat in categories %}
+            <a href="/?category={{ cat.name|urlencode }}&per_page={{ per_page }}" class="tab {% if current_category == cat.name %}active{% endif %}">
+                {{ cat.name }} <span class="count">{{ cat.count }}</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% if tags %}
+        <div class="tag-bar">
+            <span class="tag-label">标签:</span>
+            {% for t in tags %}
+            <a href="/?tag={{ t.name|urlencode }}&per_page={{ per_page }}" class="tag-chip {% if current_tag == t.name %}active{% endif %}">
+                {{ t.name }} <span class="count">{{ t.count }}</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="view-toolbar">
+        {% if current_category %}
+        <h2 class="view-title">{{ current_category }} <span class="result-count">({{ total }}本)</span></h2>
+        {% elif current_tag %}
+        <h2 class="view-title">标签: {{ current_tag }} <span class="result-count">({{ total }}本)</span></h2>
+        {% else %}
+        <h2 class="view-title">全部书籍 <span class="result-count">({{ total }}本)</span></h2>
+        {% endif %}
+        <div class="view-switcher">
+            <button onclick="setView('grid')" class="view-btn {% if view_mode == 'grid' %}active{% endif %}" title="网格封面">📦<span class="btn-label">封面</span></button>
+            <button onclick="setView('list')" class="view-btn {% if view_mode == 'list' %}active{% endif %}" title="紧凑列表">📋<span class="btn-label">列表</span></button>
+            <button onclick="setView('detail')" class="view-btn {% if view_mode == 'detail' %}active{% endif %}" title="封面+详情">📄<span class="btn-label">详情</span></button>
+            <button onclick="setView('timeline')" class="view-btn {% if view_mode == 'timeline' %}active{% endif %}" title="时间线">🕐<span class="btn-label">时间线</span></button>
+            <button onclick="setView('category')" class="view-btn {% if view_mode == 'category' %}active{% endif %}" title="按分类">🗂️<span class="btn-label">分类</span></button>
+            <button onclick="setView('bigicon')" class="view-btn {% if view_mode == 'bigicon' %}active{% endif %}" title="大图标">🔠<span class="btn-label">大图标</span></button>
+        </div>
+    </div>
+
+    {% if books %}
+
+    {# ========== 1. 网格封面 ========== #}
+    <div class="books-grid view-grid {% if view_mode != 'grid' %}hidden{% endif %}">
+        {% for book in books %}
+        <div class="book-item">
+            <a href="/book/{{ book.id }}">
+                <div class="book-cover">
+                    {% if book.cover_path %}
+                    <img src="/cover/{{ book.id }}" alt="{{ book.title }}" onerror="{{ cover_onerror }}">
+                    {% else %}
+                    <div class="book-cover-placeholder">
+                        {% if book.type == 'audio' %}<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.35"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>{% else %}<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.35"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="book-info">
+                    <h3 class="book-title">{{ book.title }}</h3>
+                    <p class="book-author">{{ book.author or '未知作者' }}</p>
+                    <p class="book-meta">
+                        {% if book.category %}<span class="book-category">{{ book.category }}</span>{% endif %}
+                        {% if book.type == 'audio' %}有声书 · {{ book.total_chapters }}集{% else %}TXT · {{ book.total_chapters }}章{% endif %}
+                    </p>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+
+    {# ========== 2. 紧凑列表 ========== #}
+    <div class="books-list view-list {% if view_mode != 'list' %}hidden{% endif %}">
+        <table class="list-table">
+            <thead>
+                <tr>
+                    <th>书名</th>
+                    <th>作者</th>
+                    <th>分类</th>
+                    <th>类型</th>
+                    <th>章节</th>
+                    <th>大小</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for book in books %}
+                <tr onclick="window.location='/book/{{ book.id }}'">
+                    <td class="list-title">{{ book.title }}</td>
+                    <td>{{ book.author or '-' }}</td>
+                    <td>{% if book.category %}<span class="book-category">{{ book.category }}</span>{% endif %}</td>
+                    <td>{% if book.type == 'audio' %}有声书{% else %}TXT{% endif %}</td>
+                    <td>{{ book.total_chapters }}</td>
+                    <td>{{ (book.file_size / 1048576)|round(1) }}MB</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {# ========== 3. 分类瀑布 ========== #}
+    <div class="books-category view-category {% if view_mode != 'category' %}hidden{% endif %}">
+        {% if current_category or current_tag %}
+            <div class="category-group">
+                <div class="category-row-scroll">
+                    {% for book in books %}
+                    <div class="category-card">
+                        <a href="/book/{{ book.id }}">
+                            <div class="book-cover">
+                                {% if book.cover_path %}
+                                <img src="/cover/{{ book.id }}" alt="{{ book.title }}" onerror="{{ cover_onerror }}">
+                                {% else %}
+                                <div class="book-cover-placeholder">{% if book.type == 'audio' %}<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.35"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>{% else %}<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.35"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>{% endif %}</div>
+                                {% endif %}
+                            </div>
+                            <p class="category-card-title">{{ book.title }}</p>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% else %}
+            {% set ns = namespace(current_cat='') %}
+            {% for book in books %}
+                {% if book.category != ns.current_cat %}
+                    {% set ns.current_cat = book.category %}
+                    <div class="category-group">
+                        <h3 class="category-group-title">{{ book.category or '默认' }} <span class="count">▸</span></h3>
+                        <div class="category-row-scroll">
+                {% endif %}
+                            <div class="category-card">
+                                <a href="/book/{{ book.id }}">
+                                    <div class="book-cover">
+                                        {% if book.cover_path %}
+                                        <img src="/cover/{{ book.id }}" alt="{{ book.title }}" onerror="{{ cover_onerror }}">
+                                        {% else %}
+                                        <div class="book-cover-placeholder">{% if book.type == 'audio' %}<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.35"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>{% else %}<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.35"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>{% endif %}</div>
+                                        {% endif %}
+                                    </div>
+                                    <p class="category-card-title">{{ book.title }}</p>
+                                </a>
+                            </div>
+            {% endfor %}
+                    </div>
+                </div>
+        {% endif %}
+    </div>
+
+    {# ========== 4. 封面+详情 ========== #}
+    <div class="books-detail view-detail {% if view_mode != 'detail' %}hidden{% endif %}">
+        {% for book in books %}
+        <div class="detail-item" onclick="window.location='/book/{{ book.id }}'">
+            <div class="detail-cover">
+                {% if book.cover_path %}
+                <img src="/cover/{{ book.id }}" alt="{{ book.title }}" onerror="{{ cover_onerror }}">
+                {% else %}
+                <div class="book-cover-placeholder">{% if book.type == 'audio' %}<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.35"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>{% else %}<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.35"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>{% endif %}</div>
+                {% endif %}
+            </div>
+            <div class="detail-info">
+                <h3 class="detail-title">{{ book.title }}</h3>
+                <p class="detail-author">{{ book.author or '未知作者' }}</p>
+                <div class="detail-meta">
+                    {% if book.category %}<span class="book-category">{{ book.category }}</span>{% endif %}
+                    <span class="detail-type">{% if book.type == 'audio' %}有声书{% else %}TXT{% endif %}</span>
+                    <span class="detail-chapters">{{ book.total_chapters }}{% if book.type == 'audio' %}集{% else %}章{% endif %}</span>
+                    <span class="detail-size">{{ (book.file_size / 1048576)|round(1) }}MB</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {# ========== 5. 时间线 ========== #}
+    <div class="books-timeline view-timeline {% if view_mode != 'timeline' %}hidden{% endif %}">
+        {% for book in books %}
+        <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            <div class="timeline-card" onclick="window.location='/book/{{ book.id }}'">
+                <div class="timeline-cover">
+                    {% if book.cover_path %}
+                    <img src="/cover/{{ book.id }}" alt="{{ book.title }}" onerror="{{ cover_onerror }}">
+                    {% else %}
+                    <div class="book-cover-placeholder small">{% if book.type == 'audio' %}<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.35"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>{% else %}<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.35"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>{% endif %}</div>
+                    {% endif %}
+                </div>
+                <div class="timeline-info">
+                    <h3>{{ book.title }}</h3>
+                    <p>{{ book.author or '未知作者' }}</p>
+                    <p class="timeline-time">{{ book.created_at[:10] if book.created_at else '' }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {# ========== 6. 大图标 ========== #}
+    <div class="books-bigicon view-bigicon {% if view_mode != 'bigicon' %}hidden{% endif %}">
+        {% for book in books %}
+        <div class="bigicon-item">
+            <a href="/book/{{ book.id }}">
+                <div class="bigicon-cover">
+                    {% if book.cover_path %}
+                    <img src="/cover/{{ book.id }}" alt="{{ book.title }}" onerror="{{ cover_onerror }}">
+                    {% else %}
+                    <div class="book-cover-placeholder big">{% if book.type == 'audio' %}<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.35"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>{% else %}<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.35"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>{% endif %}</div>
+                    {% endif %}
+                </div>
+                <div class="bigicon-overlay">
+                    <span>{{ book.title }}</span>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% elif total > 0 %}
+    <div class="empty-state">
+        <p>该页无内容</p>
+        <p>第 {{ page }} 页超出范围，本库共 {{ total_pages }} 页</p>
+        <p><a href="{{ base_url }}{{ page_join }}page=1&per_page={{ per_page }}&view={{ view_mode }}" class="page-link">回到第 1 页</a></p>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>暂无书籍</p>
+        <p>请将TXT或MP3文件放入监控目录</p>
+    </div>
+    {% endif %}
+
+    {% if total > 0 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="{{ base_url }}{{ page_join }}page={{ [page - 1, total_pages]|min }}&per_page={{ per_page }}&view={{ view_mode }}" class="page-link">上一页</a>
+        {% endif %}
+        
+        <div class="page-jump">
+            <span class="page-info">第 {{ page }} 页 / 共 {{ total_pages }} 页</span>
+            <input type="number" id="jump-page" min="1" max="{{ total_pages }}" value="{{ page if page <= total_pages else 1 }}" class="page-input">
+            <button onclick="jumpToPage()" class="btn btn-sm btn-primary">跳转</button>
+        </div>
+        
+        <div class="per-page-selector">
+            <label>每页:</label>
+            <select id="per-page-select" onchange="changePerPage()">
+                <option value="10" {{ 'selected' if per_page == 10 else '' }}>10</option>
+                <option value="20" {{ 'selected' if per_page == 20 else '' }}>20</option>
+                <option value="50" {{ 'selected' if per_page == 50 else '' }}>50</option>
+                <option value="100" {{ 'selected' if per_page == 100 else '' }}>100</option>
+            </select>
+        </div>
+        
+        {% if page * per_page < total %}
+        <a href="{{ base_url }}{{ page_join }}page={{ page + 1 }}&per_page={{ per_page }}&view={{ view_mode }}" class="page-link">下一页</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function escapeHtml(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function setView(mode) {
+    localStorage.setItem('book_view', mode);
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.view-grid,.view-list,.view-category,.view-detail,.view-timeline,.view-bigicon').forEach(el => el.classList.add('hidden'));
+    var target = document.querySelector('.view-' + mode);
+    if (target) target.classList.remove('hidden');
+    var map = {grid:0, list:1, detail:2, timeline:3, category:4, bigicon:5};
+    var btns = document.querySelectorAll('.view-btn');
+    if (map[mode] !== undefined && btns[map[mode]]) btns[map[mode]].classList.add('active');
+}
+
+// Restore saved view on load
+(function() {
+    var saved = localStorage.getItem('book_view') || 'grid';
+    // Hide all views first
+    document.querySelectorAll('.view-grid,.view-list,.view-detail,.view-timeline').forEach(function(el) { el.classList.add('hidden'); });
+    // Show saved view
+    var target = document.querySelector('.view-' + saved);
+    if (target) target.classList.remove('hidden');
+    // Update button state
+    document.querySelectorAll('.view-btn').forEach(function(b) { b.classList.remove('active'); });
+    var btns = document.querySelectorAll('.view-btn');
+    var map = {grid:0, list:1, detail:2, timeline:3};
+    if (btns[map[saved]]) btns[map[saved]].classList.add('active');
+})();
+
+function jumpToPage() {
+    var input = document.getElementById('jump-page');
+    var page = parseInt(input.value, 10);
+    // Clamp instead of navigating into an out-of-range (empty) page
+    var maxPage = parseInt(input.max, 10) || 1;
+    if (!page || page < 1) page = 1;
+    if (page > maxPage) page = maxPage;
+    var perPage = document.getElementById('per-page-select').value;
+    var view = localStorage.getItem('book_view') || 'grid';
+    var baseUrl = window.location.pathname;
+    var params = new URLSearchParams(window.location.search);
+    var category = params.get('category');
+    var tag = params.get('tag');
+    var url = baseUrl + '?';
+    if (category) url += 'category=' + encodeURIComponent(category) + '&';
+    if (tag) url += 'tag=' + encodeURIComponent(tag) + '&';
+    url += 'page=' + page + '&per_page=' + perPage + '&view=' + view;
+    window.location.href = url;
+}
+
+function changePerPage() {
+    var perPage = document.getElementById('per-page-select').value;
+    var view = localStorage.getItem('book_view') || 'grid';
+    var baseUrl = window.location.pathname;
+    var params = new URLSearchParams(window.location.search);
+    var category = params.get('category');
+    var tag = params.get('tag');
+    var url = baseUrl + '?';
+    if (category) url += 'category=' + encodeURIComponent(category) + '&';
+    if (tag) url += 'tag=' + encodeURIComponent(tag) + '&';
+    url += 'page=1&per_page=' + perPage + '&view=' + view;
+    window.location.href = url;
+}
+</script>
+
+{% endblock %}

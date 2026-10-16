@@ -1,0 +1,14 @@
+# 构建上下文排除项（与 .gitignore 类似，但含 docker 无关文件）
+__pycache__/
+*.pyc
+*.pyo
+backup_*/
+_fix_backups_*/
+patches/
+data/
+*.bak
+*.2026*
+.env
+*.env
+.git
+.gitignore

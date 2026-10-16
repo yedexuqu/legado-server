@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}{{ chapter.title }} - {{ book.title }}{% endblock %}
+
+{% block content %}
+<div class="chapter-content">
+    <div class="chapter-nav">
+        {% if chapter_num > 1 %}
+        <a href="/book/{{ book.id }}/chapter/{{ chapter_num - 1 }}" class="nav-link">上一章</a>
+        {% endif %}
+        
+        <a href="/book/{{ book.id }}" class="nav-link">目录</a>
+        
+        {% if chapter_num < book.total_chapters %}
+        <a href="/book/{{ book.id }}/chapter/{{ chapter_num + 1 }}" class="nav-link">下一章</a>
+        {% endif %}
+    </div>
+    
+    <h1 class="chapter-title">{{ chapter.title }}</h1>
+    
+    <div class="chapter-text">
+        <span style="white-space: pre-wrap">{{ content }}</span>
+    </div>
+    
+    <div class="chapter-nav bottom">
+        {% if chapter_num > 1 %}
+        <a href="/book/{{ book.id }}/chapter/{{ chapter_num - 1 }}" class="nav-link">上一章</a>
+        {% endif %}
+        
+        <a href="/book/{{ book.id }}" class="nav-link">目录</a>
+        
+        {% if chapter_num < book.total_chapters %}
+        <a href="/book/{{ book.id }}/chapter/{{ chapter_num + 1 }}" class="nav-link">下一章</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

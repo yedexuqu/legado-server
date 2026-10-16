@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+
+# Backups / local data
+backup_*/
+_fix_backups_*/
+patches/
+data/
+*.bak
+*.2026*
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Secrets
+.env
+*.env

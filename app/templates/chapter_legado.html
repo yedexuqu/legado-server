@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1 class="chapter-title">{{ chapter.title }}</h1>
+    {% if chapter.audio_file %}
+    <audio class="chapter-audio" src="{{ chapter.audio_file }}" controls preload="none"></audio>
+    {% endif %}
+    <div class="chapter-text">
+        <span style="white-space: pre-wrap">{{ content }}</span>
+    </div>
+</body>
+</html>

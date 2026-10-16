@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <div class="book-list">
+        {% for book in results %}
+        <div class="book-item">
+            <a href="{{ base_url }}/book/{{ book.id }}">
+                <img src="{{ base_url }}/cover/{{ book.id }}" alt="{{ book.title }}">
+                <span class="book-title">{{ book.title }}</span>
+                <span class="book-author">{{ book.author or '未知作者' }}</span>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

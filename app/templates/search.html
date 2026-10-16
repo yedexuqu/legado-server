@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}搜索: {{ key }} - 本地书库{% endblock %}
+
+{% block content %}
+{% set total_pages = ((total / per_page)|int + (1 if total % per_page > 0 else 0)) %}
+{% set key_q = key|urlencode %}
+{% set cover_onerror = "this.onerror=null;this.src='data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%203%204%22%3E%3Crect%20width%3D%223%22%20height%3D%224%22%20fill%3D%22%23232630%22%2F%3E%3Cpath%20d%3D%22M1%203.2V1.2l1-.16V3%22%20fill%3D%22none%22%20stroke%3D%22%234f6ef7%22%20stroke-width%3D%22.12%22%2F%3E%3C%2Fsvg%3E'" %}
+<div class="search-results">
+    <h1>搜索结果: "{{ key }}"</h1>
+    <p class="search-info">共找到 {{ total }} 本书</p>
+    
+    {% if results %}
+    <div class="books-grid">
+        {% for book in results %}
+        <div class="book-item">
+            <a href="/book/{{ book.id }}">
+                <div class="book-cover">
+                    {% if book.cover_path %}
+                    <img src="/cover/{{ book.id }}" alt="{{ book.title }}" onerror="{{ cover_onerror }}">
+                    {% else %}
+                    <div class="book-cover-placeholder">
+                        {% if book.type == 'audio' %}<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.35"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>{% else %}<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.35"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="book-info">
+                    <h3 class="book-title">{{ book.title }}</h3>
+                    <p class="book-author">{{ book.author or '未知作者' }}</p>
+                    <p class="book-meta">
+                        {% if book.type == 'audio' %}
+                        有声书 · {{ book.total_chapters }}集
+                        {% else %}
+                        TXT · {{ book.total_chapters }}章
+                        {% endif %}
+                    </p>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% elif total > 0 %}
+    <div class="empty-state">
+        <p>该页无内容</p>
+        <p>第 {{ page }} 页超出范围，共找到 {{ total }} 本书（{{ total_pages }} 页）</p>
+        <p><a href="/search?key={{ key_q }}&page=1" class="page-link">回到第 1 页</a></p>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>未找到相关书籍</p>
+    </div>
+    {% endif %}
+
+    {% if total > 0 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="/search?key={{ key_q }}&page={{ [page - 1, total_pages]|min }}" class="page-link">上一页</a>
+        {% endif %}
+        
+        <span class="page-info">第 {{ page }} 页 / 共 {{ total_pages }} 页</span>
+        
+        {% if page * per_page < total %}
+        <a href="/search?key={{ key_q }}&page={{ page + 1 }}" class="page-link">下一页</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

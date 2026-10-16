@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1 class="book-title">{{ book.title }}</h1>
+    <p class="book-author">{{ book.author or '未知作者' }}</p>
+    <img class="book-cover" src="{{ base_url }}/cover/{{ book.id }}" alt="{{ book.title }}">
+    
+    <div class="chapter-list">
+        {% for chapter in chapters %}
+        <div class="chapter-item">
+            <a href="{{ base_url }}/book/{{ book.id }}/chapter/{{ chapter.chapter_number }}">
+                {{ chapter.title }}
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

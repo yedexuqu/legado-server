@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}{{ book.title }} - 本地书库{% endblock %}
+
+{% block content %}
+{% set cover_onerror = "this.onerror=null;this.src='data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%203%204%22%3E%3Crect%20width%3D%223%22%20height%3D%224%22%20fill%3D%22%23232630%22%2F%3E%3Cpath%20d%3D%22M1%203.2V1.2l1-.16V3%22%20fill%3D%22none%22%20stroke%3D%22%234f6ef7%22%20stroke-width%3D%22.12%22%2F%3E%3C%2Fsvg%3E'" %}
+<div class="book-detail">
+    <div class="book-header">
+        <div class="book-cover-large">
+            {% if book.cover_path %}
+            <img src="/cover/{{ book.id }}" alt="{{ book.title }}" onerror="{{ cover_onerror }}">
+            {% else %}
+            <div class="book-cover-placeholder-large">
+                {% if book.type == 'audio' %}<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.35"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>{% else %}<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.35"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        <div class="book-info-large">
+            <h1 class="book-title">{{ book.title }}</h1>
+            <p class="book-author">作者: {{ book.author or '未知作者' }}</p>
+            <p class="book-meta">
+                {% if book.category %}
+                <a href="/?category={{ book.category|urlencode }}" class="meta-category">{{ book.category }}</a>
+                {% endif %}
+                {% if book.type == 'audio' %}
+                有声书 · {{ book.total_chapters }}集
+                {% if book.total_duration %}
+                · 时长: {{ (book.total_duration / 3600)|int }}小时{{ ((book.total_duration % 3600) / 60)|int }}分钟
+                {% endif %}
+                {% else %}
+                TXT · {{ book.total_chapters }}章
+                {% endif %}
+            </p>
+            
+            <div class="book-tags-section">
+                <div class="tags-display" id="tags-display">
+                    {% for tag in tags %}
+                    <a href="/?tag={{ tag|urlencode }}" class="book-tag">{{ tag }}</a>
+                    {% endfor %}
+                </div>
+                <button onclick="openTagEditor()" class="btn-tag-edit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>  编辑标签</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="chapter-section">
+        <h2>章节目录</h2>
+        <div class="chapter-list">
+            {% for chapter in chapters %}
+            <div class="chapter-item">
+                <a href="/book/{{ book.id }}/chapter/{{ chapter.chapter_number }}">
+                    {{ chapter.title }}
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Tag Editor Modal -->
+<div id="tag-modal" class="tag-modal" style="display:none;">
+    <div class="tag-modal-content">
+        <div class="tag-modal-header">
+            <h3>编辑标签</h3>
+            <button onclick="closeTagEditor()" class="tag-modal-close">&times;</button>
+        </div>
+        <div class="tag-modal-body">
+            <div class="current-tags" id="modal-current-tags">
+                {% for tag in tags %}
+                <span class="tag-item">{{ tag }} <button data-tag="{{ tag }}" onclick="removeTagFromModal(this.dataset.tag)" class="tag-remove">&times;</button></span>
+                {% endfor %}
+            </div>
+            <div class="tag-input-row">
+                <input type="text" id="tag-input" placeholder="输入标签名称" onkeydown="if(event.key==='Enter')addTagFromModal()">
+                <button onclick="addTagFromModal()" class="btn btn-primary btn-sm">添加</button>
+            </div>
+            <div class="popular-tags" id="popular-tags">
+                <p class="popular-label">常用标签:</p>
+                <div class="popular-tag-list" id="popular-tag-list"></div>
+            </div>
+        </div>
+        <div class="tag-modal-footer">
+            <button onclick="saveTags()" class="btn btn-primary">保存</button>
+            <button onclick="closeTagEditor()" class="btn btn-secondary">取消</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.book-tags-section {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.tags-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.book-tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    background: var(--bg-primary);
+    color: var(--accent-color);
+    border: 1px solid var(--accent-color);
+    font-size: 12px;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.book-tag:hover {
+    background: var(--accent-color);
+    color: #fff;
+}
+
+.meta-category {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 3px;
+    background: var(--accent-color);
+    color: #fff;
+    font-size: 11px;
+    text-decoration: none;
+    margin-right: 6px;
+}
+
+.btn-tag-edit {
+    padding: 3px 10px;
+    border: 1px dashed var(--border-color);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-tag-edit:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+/* Modal */
+.tag-modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tag-modal-content {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 450px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.tag-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tag-modal-header h3 { margin: 0; font-size: 16px; }
+
+.tag-modal-close {
+    background: none; border: none; font-size: 24px;
+    cursor: pointer; color: var(--text-muted);
+}
+
+.tag-modal-body { padding: 15px 20px; }
+
+.tag-modal-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.current-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+    min-height: 30px;
+}
+
+.tag-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    background: var(--accent-color);
+    color: #fff;
+    font-size: 13px;
+}
+
+.tag-remove {
+    background: none; border: none; color: rgba(255,255,255,0.8);
+    cursor: pointer; font-size: 14px; padding: 0 2px;
+}
+
+.tag-remove:hover { color: #fff; }
+
+.tag-input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.tag-input-row input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 14px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.btn-sm { padding: 6px 14px; font-size: 13px; }
+
+.popular-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.popular-tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.popular-tag {
+    padding: 3px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.popular-tag:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+</style>
+
+<script>
+function escapeHtml(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+let currentTags = {{ tags|list|tojson }};
+const bookId = {{ book.id }};
+
+function openTagEditor() {
+    document.getElementById('tag-modal').style.display = 'flex';
+    loadPopularTags();
+    renderModalTags();
+}
+
+function closeTagEditor() {
+    document.getElementById('tag-modal').style.display = 'none';
+}
+
+function renderModalTags() {
+    const container = document.getElementById('modal-current-tags');
+    container.innerHTML = currentTags.map((t, i) =>
+        '<span class="tag-item">' + escapeHtml(t) +
+        ' <button data-tag-index="' + i + '" onclick="removeTagAtIndex(this)" class="tag-remove">&times;</button></span>'
+    ).join('');
+}
+
+function addTagFromModal() {
+    const input = document.getElementById('tag-input');
+    const tag = input.value.trim();
+    if (!tag || currentTags.includes(tag)) return;
+    currentTags.push(tag);
+    input.value = '';
+    renderModalTags();
+}
+
+function removeTagFromModal(tag) {
+    currentTags = currentTags.filter(t => t !== tag);
+    renderModalTags();
+}
+
+function removeTagAtIndex(btn) {
+    var idx = parseInt(btn.dataset.tagIndex, 10);
+    if (!isNaN(idx) && idx >= 0 && idx < currentTags.length) {
+        currentTags.splice(idx, 1);
+        renderModalTags();
+    }
+}
+
+async function saveTags() {
+    try {
+        const resp = await fetch('/api/books/' + bookId + '/tags/batch', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({tags: currentTags})
+        });
+        const result = await resp.json();
+        if (result.success) {
+            closeTagEditor();
+            // Update display without reload
+            const display = document.getElementById('tags-display');
+            display.innerHTML = currentTags.map(t => 
+                '<a href="/?tag=' + encodeURIComponent(t) + '" class="book-tag">' + escapeHtml(t) + '</a>'
+            ).join('');
+        }
+    } catch(e) { alert('保存失败: ' + e.message); }
+}
+
+async function loadPopularTags() {
+    try {
+        const resp = await fetch('/api/tags/popular');
+        const result = await resp.json();
+        if (result.success) {
+            const list = document.getElementById('popular-tag-list');
+            list.innerHTML = result.data.map(t => 
+                '<span class="popular-tag" data-tag="' + escapeHtml(t.name) + '" onclick="quickAddTag(this.dataset.tag)">' + escapeHtml(t.name) + ' (' + (parseInt(t.count, 10) || 0) + ')</span>'
+            ).join('');
+        }
+    } catch(e) {}
+}
+
+function quickAddTag(tag) {
+    if (!currentTags.includes(tag)) {
+        currentTags.push(tag);
+        renderModalTags();
+    }
+}
+
+// Enter key to add tag
+document.getElementById('tag-input')?.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); addTagFromModal(); }
+});
+</script>
+{% endblock %}

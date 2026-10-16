@@ -1,0 +1,27 @@
+# legado-server 部署编排
+#
+# 说明：
+# - 镜像使用 GitHub Container Registry（ghcr.io）构建产物，由 CI / 本地 build 推送。
+# - 卷路径请替换为你的 NAS / 主机实际路径（下方为占位示例）。
+#   * <SOURCE_DIR>  ：本仓库源码克隆/解包后的目录（含 app/、requirements.txt、Dockerfile）
+#   * <DATA_DIR>    ：运行数据持久化目录（SQLite、上传文件等）
+#   * <BOOKS_DIR>   ：书籍文件目录（txt / 有声书 mp3 等），只读挂载到 /books
+# - 端口 8086 为服务端口，按需映射到宿主机。
+
+services:
+  legado-server:
+    # 本地构建后推送的镜像；也可改为本地 build: .
+    image: ghcr.io/<owner>/legado-server:latest
+    container_name: legado-server
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - <SOURCE_DIR>:/app
+      - <DATA_DIR>:/app/data
+      - <BOOKS_DIR>:/books:ro
+    ports:
+      - "8086:8086"
+    environment:
+      - TZ=Asia/Shanghai
+    # command 已在镜像 CMD 中定义；如需覆盖：
+    # command: ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8086"]
